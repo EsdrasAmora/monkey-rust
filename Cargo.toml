@@ -6,13 +6,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[[bin]]
-name = "monkey-repl"
-path = "src/repl.rs"
-
-[[bin]]
-name = "monkey-cli"
-path = "src/main.rs"
 
 [dependencies]
 clap = "4.1.13"
