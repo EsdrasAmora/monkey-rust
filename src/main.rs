@@ -1,6 +1,5 @@
-use monkey_lib::lexer::print_token;
+use monkey_rust::lexer::visibility_test;
 
 fn main() {
-    print_token()
-    // println!("Hello world, {}", Token::Value);
+    visibility_test()
 }

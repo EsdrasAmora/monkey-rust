@@ -1,5 +1,5 @@
 mod token;
 
-pub fn print_token() {
+pub fn visibility_test() {
     println!("Hello world, {:?}", token::Token::Value);
 }
