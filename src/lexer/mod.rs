@@ -1,4 +1,5 @@
 mod token;
+use std::iter::Peekable;
 use token::Token;
 
 #[derive(Debug)]
@@ -17,83 +18,89 @@ impl Lexer {
             while char.is_whitespace() {
                 char = chars.next().expect("Unexpected EOF");
             }
-
-            let token = match char {
-                '+' => Token::Plus,
-                ',' => Token::Comma,
-                ';' => Token::Semicolon,
-                '(' => Token::LParen,
-                ')' => Token::RParen,
-                '{' => Token::LBrace,
-                '}' => Token::RBrace,
-                '-' => Token::Minus,
-                '*' => Token::Asterisk,
-                '/' => Token::Slash,
-                '<' => Token::Lt,
-                '>' => Token::Gt,
-                '=' => {
-                    if chars.peek().filter(|x| x == &&'=').is_some() {
-                        chars.next();
-                        Token::Eq
-                    } else {
-                        Token::Assign
-                    }
-                }
-                '!' => {
-                    if chars.peek().filter(|x| x == &&'=').is_some() {
-                        chars.next();
-                        Token::NotEq
-                    } else {
-                        Token::Bang
-                    }
-                }
-                _ if char.is_ascii_alphabetic() || char == '_' => {
-                    temp.push(char);
-
-                    while let Some(next_char) = chars
-                        .peek()
-                        .filter(|x| x.is_ascii_alphanumeric() || **x == '_')
-                    {
-                        temp.push(*next_char);
-                        chars.next();
-                    }
-
-                    let token = match temp.as_str() {
-                        "fn" => Token::Function,
-                        "let" => Token::Let,
-                        "true" => Token::True,
-                        "false" => Token::False,
-                        "if" => Token::If,
-                        "else" => Token::Else,
-                        "return" => Token::Return,
-                        _ => Token::Identifier(temp.clone()),
-                    };
-
-                    temp.clear();
-                    token
-                }
-                _ if char.is_ascii_digit() => {
-                    temp.push(char);
-
-                    while chars
-                        .peek()
-                        .filter(|x| x.is_ascii_digit())
-                        .map(|x| temp.push(*x))
-                        .is_some()
-                    {
-                        chars.next();
-                    }
-
-                    let clone = std::mem::take(&mut temp);
-                    clone.parse().map_or(Token::Illegal, Token::Int)
-                }
-                _ => Token::Illegal,
-            };
-
+            let token = Lexer::new_helper(char, &mut temp, &mut chars);
             tokens.push(token);
         }
 
         Lexer { tokens }
+    }
+
+    fn new_helper(
+        char: char,
+        temp: &mut String,
+        chars: &mut Peekable<impl Iterator<Item = char>>,
+    ) -> Token {
+        match char {
+            '+' => Token::Plus,
+            ',' => Token::Comma,
+            ';' => Token::Semicolon,
+            '(' => Token::LParen,
+            ')' => Token::RParen,
+            '{' => Token::LBrace,
+            '}' => Token::RBrace,
+            '-' => Token::Minus,
+            '*' => Token::Asterisk,
+            '/' => Token::Slash,
+            '<' => Token::Lt,
+            '>' => Token::Gt,
+            '=' => {
+                if chars.peek().filter(|x| x == &&'=').is_some() {
+                    chars.next();
+                    Token::Eq
+                } else {
+                    Token::Assign
+                }
+            }
+            '!' => {
+                if chars.peek().filter(|x| x == &&'=').is_some() {
+                    chars.next();
+                    Token::NotEq
+                } else {
+                    Token::Bang
+                }
+            }
+            _ if char.is_ascii_alphabetic() || char == '_' => {
+                temp.push(char);
+
+                while let Some(next_char) = chars
+                    .peek()
+                    .filter(|x| x.is_ascii_alphanumeric() || **x == '_')
+                {
+                    temp.push(*next_char);
+                    chars.next();
+                }
+
+                let token = match temp.as_str() {
+                    "fn" => Token::Function,
+                    "let" => Token::Let,
+                    "true" => Token::True,
+                    "false" => Token::False,
+                    "if" => Token::If,
+                    "else" => Token::Else,
+                    "return" => Token::Return,
+                    _ => Token::Identifier(temp.clone()),
+                };
+
+                temp.clear();
+                token
+            }
+            _ if char.is_ascii_digit() => {
+                temp.push(char);
+
+                while chars
+                    .peek()
+                    .filter(|x| x.is_ascii_digit())
+                    .map(|x| temp.push(*x))
+                    .is_some()
+                {
+                    chars.next();
+                }
+
+                let clone = std::mem::take(temp);
+                clone.parse().map_or(Token::Illegal, Token::Int)
+            }
+            _ => Token::Illegal,
+        }
     }
 }
 
