@@ -2,15 +2,25 @@
 pub enum Token {
     ILLEGAL,
     EOF,
-    // Identifiers + literals
-    IDENT(String),
+    IDENTIFIER(String),
+    // keywords + literals
     INT(i64),
+    TRUE,
+    FALSE,
+    IF,
+    ELSE,
+    RETURN,
     // Operators
-    ASSIGN,
-    BANG,
-    PLUS,
     EQ,
     NOTEQ,
+    ASSIGN,
+    PLUS,
+    MINUS,
+    BANG,
+    ASTERISK,
+    SLASH,
+    LT,
+    GT,
     // Delimiters
     COMMA,
     SEMICOLON,
