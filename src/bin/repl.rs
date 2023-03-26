@@ -1,13 +1,17 @@
 use std::io::{self, BufRead};
 
-fn main() {
-    let mut lines = io::stdin().lock().lines();
-    while let Some(line) = lines.next() {
-        let last_input = line.expect("Unable to read line from stdin");
+use monkey_rust::lexer::Lexer;
 
-        if last_input.len() == 0 {
+fn main() {
+    let lines = io::stdin().lock().lines();
+    for line in lines {
+        let line = line.expect("Unable to read line from stdin");
+
+        if line.is_empty() {
             println!("Empty line, exiting");
             break;
         }
+
+        println!("Tokens: {:?}", Lexer::new(&line));
     }
 }

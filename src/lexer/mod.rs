@@ -1,13 +1,13 @@
 mod token;
 use token::Token;
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub struct Lexer {
     pub tokens: Vec<Token>,
 }
 
 impl Lexer {
-    fn new(input: &str) -> Self {
+    pub fn new(input: &str) -> Self {
         let mut chars = input.trim().chars().filter(|x| x.is_ascii()).peekable();
 
         let mut temp = String::with_capacity(10);
@@ -18,83 +18,79 @@ impl Lexer {
                 char = chars.next().expect("Unexpected EOF");
             }
 
-            let char_token = match char {
-                '+' => Some(Token::PLUS),
-                ',' => Some(Token::COMMA),
-                ';' => Some(Token::SEMICOLON),
-                '(' => Some(Token::LPAREN),
-                ')' => Some(Token::RPAREN),
-                '{' => Some(Token::LBRACE),
-                '}' => Some(Token::RBRACE),
-                '-' => Some(Token::MINUS),
-                '*' => Some(Token::ASTERISK),
-                '/' => Some(Token::SLASH),
-                '<' => Some(Token::LT),
-                '>' => Some(Token::GT),
+            let token = match char {
+                '+' => Token::Plus,
+                ',' => Token::Comma,
+                ';' => Token::Semicolon,
+                '(' => Token::LParen,
+                ')' => Token::RParen,
+                '{' => Token::LBrace,
+                '}' => Token::RBrace,
+                '-' => Token::Minus,
+                '*' => Token::Asterisk,
+                '/' => Token::Slash,
+                '<' => Token::Lt,
+                '>' => Token::Gt,
                 '=' => {
-                    if chars.peek().and_then(|x| x.eq(&'=').then_some(x)).is_some() {
+                    if chars.peek().filter(|x| x == &&'=').is_some() {
                         chars.next();
-                        Some(Token::EQ)
+                        Token::Eq
                     } else {
-                        Some(Token::ASSIGN)
+                        Token::Assign
                     }
                 }
                 '!' => {
-                    //TODO: use `is_some_and` when it's stable: https://github.com/rust-lang/rust/issues/93050#issuecomment-1019312470
-                    if chars.peek().and_then(|x| x.eq(&'=').then_some(x)).is_some() {
+                    if chars.peek().filter(|x| x == &&'=').is_some() {
                         chars.next();
-                        Some(Token::NOTEQ)
+                        Token::NotEq
                     } else {
-                        Some(Token::BANG)
+                        Token::Bang
                     }
                 }
                 _ if char.is_ascii_alphabetic() || char == '_' => {
                     temp.push(char);
 
-                    while chars
+                    while let Some(next_char) = chars
                         .peek()
-                        .and_then(|x| {
-                            (x.is_ascii_alphanumeric() || *x == '_').then(|| temp.push(*x))
-                        })
-                        .is_some()
+                        .filter(|x| x.is_ascii_alphanumeric() || **x == '_')
                     {
+                        temp.push(*next_char);
                         chars.next();
                     }
 
                     let token = match temp.as_str() {
-                        "fn" => Token::FUNCTION,
-                        "let" => Token::LET,
-                        "true" => Token::TRUE,
-                        "false" => Token::FALSE,
-                        "if" => Token::IF,
-                        "else" => Token::ELSE,
-                        "return" => Token::RETURN,
-                        _ => Token::IDENTIFIER(temp.clone()),
+                        "fn" => Token::Function,
+                        "let" => Token::Let,
+                        "true" => Token::True,
+                        "false" => Token::False,
+                        "if" => Token::If,
+                        "else" => Token::Else,
+                        "return" => Token::Return,
+                        _ => Token::Identifier(temp.clone()),
                     };
 
                     temp.clear();
-                    Some(token)
+                    token
                 }
                 _ if char.is_ascii_digit() => {
                     temp.push(char);
 
                     while chars
                         .peek()
-                        .and_then(|x| x.is_ascii_digit().then(|| temp.push(*x)))
+                        .filter(|x| x.is_ascii_digit())
+                        .map(|x| temp.push(*x))
                         .is_some()
                     {
                         chars.next();
                     }
 
-                    let clone = std::mem::replace(&mut temp, String::new());
-                    clone.parse().ok().and_then(|x| Some(Token::INT(x)))
+                    let clone = std::mem::take(&mut temp);
+                    clone.parse().map_or(Token::Illegal, Token::Int)
                 }
-                _ => None,
+                _ => Token::Illegal,
             };
 
-            char_token
-                .and_then(|f| Some(tokens.push(f)))
-                .or_else(|| Some(tokens.push(Token::ILLEGAL)));
+            tokens.push(token);
         }
 
         Lexer { tokens }
@@ -133,79 +129,79 @@ mod tests {
         assert_eq!(
             lexer.tokens,
             vec![
-                Token::LET,
-                Token::IDENTIFIER("five".to_owned()),
-                Token::ASSIGN,
-                Token::INT(5),
-                Token::SEMICOLON,
-                Token::LET,
-                Token::IDENTIFIER("ten".to_owned()),
-                Token::ASSIGN,
-                Token::INT(10),
-                Token::SEMICOLON,
-                Token::LET,
-                Token::IDENTIFIER("add".to_owned()),
-                Token::ASSIGN,
-                Token::FUNCTION,
-                Token::LPAREN,
-                Token::IDENTIFIER("x".to_owned()),
-                Token::COMMA,
-                Token::IDENTIFIER("y".to_owned()),
-                Token::RPAREN,
-                Token::LBRACE,
-                Token::IDENTIFIER("x".to_owned()),
-                Token::PLUS,
-                Token::IDENTIFIER("y".to_owned()),
-                Token::SEMICOLON,
-                Token::RBRACE,
-                Token::SEMICOLON,
-                Token::LET,
-                Token::IDENTIFIER("result".to_owned()),
-                Token::ASSIGN,
-                Token::IDENTIFIER("add".to_owned()),
-                Token::LPAREN,
-                Token::IDENTIFIER("five".to_owned()),
-                Token::COMMA,
-                Token::IDENTIFIER("ten".to_owned()),
-                Token::RPAREN,
-                Token::SEMICOLON,
-                Token::BANG,
-                Token::MINUS,
-                Token::SLASH,
-                Token::ASTERISK,
-                Token::INT(5),
-                Token::SEMICOLON,
-                Token::INT(5),
-                Token::LT,
-                Token::INT(10),
-                Token::GT,
-                Token::INT(5),
-                Token::SEMICOLON,
-                Token::IF,
-                Token::LPAREN,
-                Token::INT(5),
-                Token::LT,
-                Token::INT(10),
-                Token::RPAREN,
-                Token::LBRACE,
-                Token::RETURN,
-                Token::TRUE,
-                Token::SEMICOLON,
-                Token::RBRACE,
-                Token::ELSE,
-                Token::LBRACE,
-                Token::RETURN,
-                Token::FALSE,
-                Token::SEMICOLON,
-                Token::RBRACE,
-                Token::INT(10),
-                Token::EQ,
-                Token::INT(10),
-                Token::SEMICOLON,
-                Token::INT(10),
-                Token::NOTEQ,
-                Token::INT(9),
-                Token::SEMICOLON
+                Token::Let,
+                Token::Identifier("five".to_owned()),
+                Token::Assign,
+                Token::Int(5),
+                Token::Semicolon,
+                Token::Let,
+                Token::Identifier("ten".to_owned()),
+                Token::Assign,
+                Token::Int(10),
+                Token::Semicolon,
+                Token::Let,
+                Token::Identifier("add".to_owned()),
+                Token::Assign,
+                Token::Function,
+                Token::LParen,
+                Token::Identifier("x".to_owned()),
+                Token::Comma,
+                Token::Identifier("y".to_owned()),
+                Token::RParen,
+                Token::LBrace,
+                Token::Identifier("x".to_owned()),
+                Token::Plus,
+                Token::Identifier("y".to_owned()),
+                Token::Semicolon,
+                Token::RBrace,
+                Token::Semicolon,
+                Token::Let,
+                Token::Identifier("result".to_owned()),
+                Token::Assign,
+                Token::Identifier("add".to_owned()),
+                Token::LParen,
+                Token::Identifier("five".to_owned()),
+                Token::Comma,
+                Token::Identifier("ten".to_owned()),
+                Token::RParen,
+                Token::Semicolon,
+                Token::Bang,
+                Token::Minus,
+                Token::Slash,
+                Token::Asterisk,
+                Token::Int(5),
+                Token::Semicolon,
+                Token::Int(5),
+                Token::Lt,
+                Token::Int(10),
+                Token::Gt,
+                Token::Int(5),
+                Token::Semicolon,
+                Token::If,
+                Token::LParen,
+                Token::Int(5),
+                Token::Lt,
+                Token::Int(10),
+                Token::RParen,
+                Token::LBrace,
+                Token::Return,
+                Token::True,
+                Token::Semicolon,
+                Token::RBrace,
+                Token::Else,
+                Token::LBrace,
+                Token::Return,
+                Token::False,
+                Token::Semicolon,
+                Token::RBrace,
+                Token::Int(10),
+                Token::Eq,
+                Token::Int(10),
+                Token::Semicolon,
+                Token::Int(10),
+                Token::NotEq,
+                Token::Int(9),
+                Token::Semicolon
             ]
         )
     }

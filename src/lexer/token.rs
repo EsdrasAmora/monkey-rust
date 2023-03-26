@@ -1,34 +1,35 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Token {
-    ILLEGAL,
-    EOF,
-    IDENTIFIER(String),
-    // keywords + literals
-    INT(i64),
-    TRUE,
-    FALSE,
-    IF,
-    ELSE,
-    RETURN,
-    // Operators
-    EQ,
-    NOTEQ,
-    ASSIGN,
-    PLUS,
-    MINUS,
-    BANG,
-    ASTERISK,
-    SLASH,
-    LT,
-    GT,
-    // Delimiters
-    COMMA,
-    SEMICOLON,
-    LPAREN,
-    RPAREN,
-    LBRACE,
-    RBRACE,
-    // Keywords
-    FUNCTION,
-    LET,
+    #[default]
+    Illegal,
+    Eof,
+    Identifier(String),
+    //Literals
+    Int(i64),
+    True,
+    False,
+    //Operators
+    Eq,
+    NotEq,
+    Assign,
+    Plus,
+    Minus,
+    Bang,
+    Asterisk,
+    Slash,
+    Lt,
+    Gt,
+    //Delimiters
+    Comma,
+    Semicolon,
+    LParen,
+    RParen,
+    LBrace,
+    RBrace,
+    //Keywords
+    Function,
+    Let,
+    If,
+    Else,
+    Return,
 }
