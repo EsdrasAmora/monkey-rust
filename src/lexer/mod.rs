@@ -1,20 +1,47 @@
 mod token;
 
+use token::Token;
+
 #[allow(dead_code)]
-#[derive(Debug, Default)]
 pub struct Lexer {
-    input: String,
-    position: u32,      // current position in input (points to current char)
-    read_position: u32, // current reading position in input (after current char)
-    char: char,         // current char under examination
+    tokens: Vec<Token>,
 }
 
 impl Lexer {
-    fn new(input: String) -> Self {
-        Lexer::default()
+    fn new(input: &str) -> Self {
+        let mut chars = input
+            .char_indices()
+            .filter(|(_, x)| x.is_ascii() && !x.is_ascii_whitespace())
+            .peekable();
+
+        let temp = String::with_capacity(4);
+
+        while let Some((index, char)) = chars.next() {
+            if let Ok(token) = TryInto::<Token>::try_into(char) {
+                println!("Found token: {:?}", token);
+            }
+        }
+
+        Lexer { tokens: Vec::new() }
     }
 }
 
-pub fn visibility_test() {
-    println!("Hello world, {:?}", token::Token::LET);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_visibility_123() {
+        let input = r#" 
+        let five = 5;
+        let ten = 10;
+        let add = fn(x, y) {
+            x + y;
+        };
+        let result = add(five, ten);"#;
+
+        let lexer = Lexer::new(input);
+
+        assert_eq!(lexer.tokens, vec![])
+    }
 }
