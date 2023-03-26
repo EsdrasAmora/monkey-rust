@@ -1,36 +1,45 @@
 mod token;
+use smol_str::SmolStr;
 use token::Token;
 
 #[allow(dead_code)]
 pub struct Lexer {
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
 }
 
 impl Lexer {
     fn new(input: &str) -> Self {
-        let mut chars = input
-            .trim()
-            .char_indices()
-            .filter(|(_, x)| x.is_ascii())
-            .peekable();
-
-        // println!("Chars: {:?}", chars.collect::<Vec<_>>());
+        let mut chars = input.trim().chars().filter(|x| x.is_ascii()).peekable();
 
         let mut temp = String::with_capacity(10);
-        let mut tokens = Vec::with_capacity(20);
+        let mut tokens = Vec::with_capacity(32);
 
-        'outer: while let Some((index, mut char)) = chars.next() {
+        while let Some(mut char) = chars.next() {
             while char.is_whitespace() {
-                //as it is already trimmed, we could just unwrap here
-                if let Some((_, next_char)) = chars.next() {
-                    char = next_char;
-                } else {
-                    break 'outer;
-                }
+                char = chars.next().expect("Unexpected EOF");
             }
 
             let char_token = match char {
-                '=' => Some(Token::ASSIGN),
+                '=' => {
+                    if chars.peek().and_then(|x| x.eq(&'=').then_some(x)).is_some() {
+                        chars.next();
+                        Some(Token::EQ)
+                    } else {
+                        Some(Token::ASSIGN)
+                    }
+                }
+                '!' => {
+                    if chars
+                        .peek()
+                        .is_some_and(|x| x.eq(&'=').then_some(x))
+                        .is_some()
+                    {
+                        chars.next();
+                        Some(Token::NOTEQ)
+                    } else {
+                        Some(Token::BANG)
+                    }
+                }
                 '+' => Some(Token::PLUS),
                 ',' => Some(Token::COMMA),
                 ';' => Some(Token::SEMICOLON),
@@ -49,9 +58,9 @@ impl Lexer {
             if char.is_ascii_alphabetic() || char == '_' {
                 temp.push(char);
 
-                while let Some((_, next_char)) = chars.peek() {
+                while let Some(next_char) = chars.peek() {
                     if next_char.is_ascii_alphanumeric() || next_char == &'_' {
-                        temp.push(chars.next().unwrap().1);
+                        temp.push(chars.next().unwrap());
                     } else {
                         break;
                     }
@@ -60,12 +69,7 @@ impl Lexer {
                 let token = match temp.as_str() {
                     "fn" => Token::FUNCTION,
                     "let" => Token::LET,
-                    _ => {
-                        //TODO: just clone it
-                        let indentifier = std::mem::replace(&mut temp, String::new());
-                        println!("Identifier: {indentifier}, emptyString: {temp}");
-                        Token::IDENT(indentifier)
-                    }
+                    _ => Token::IDENT(temp.clone()),
                 };
 
                 temp.clear();
@@ -76,17 +80,15 @@ impl Lexer {
             if char.is_ascii_digit() {
                 temp.push(char);
 
-                while let Some((_, next_char)) = chars.peek() {
-                    //TODO: allow '_' in numbers
-                    if next_char.is_ascii_digit() {
-                        temp.push(chars.next().unwrap().1);
-                    } else {
-                        break;
-                    }
+                while chars
+                    .peek()
+                    .and_then(|x| x.is_ascii_digit().then_some(x))
+                    .is_some()
+                {
+                    temp.push(chars.next().unwrap());
                 }
 
-                let number = std::mem::replace(&mut temp, String::new());
-                tokens.push(Token::INT(number.parse().unwrap()));
+                tokens.push(Token::INT(temp.clone().parse().unwrap()));
             }
         }
 
@@ -102,7 +104,7 @@ mod tests {
     fn test_visibility_123() {
         let input = r#" 
         let five = 5;
-        let ten = 10;
+        let ten = 1010;
         let add = fn(x, y) {
             x + y;
         };
@@ -110,6 +112,46 @@ mod tests {
 
         let lexer = Lexer::new(input);
 
-        assert_eq!(lexer.tokens, vec![])
+        assert_eq!(
+            lexer.tokens,
+            vec![
+                Token::LET,
+                Token::IDENT("five".to_owned()),
+                Token::ASSIGN,
+                Token::INT(5),
+                Token::SEMICOLON,
+                Token::LET,
+                Token::IDENT("ten".to_owned()),
+                Token::ASSIGN,
+                Token::INT(1010),
+                Token::SEMICOLON,
+                Token::LET,
+                Token::IDENT("add".to_owned()),
+                Token::ASSIGN,
+                Token::FUNCTION,
+                Token::LPAREN,
+                Token::IDENT("x".to_owned()),
+                Token::COMMA,
+                Token::IDENT("y".to_owned()),
+                Token::RPAREN,
+                Token::LBRACE,
+                Token::IDENT("x".to_owned()),
+                Token::PLUS,
+                Token::IDENT("y".to_owned()),
+                Token::SEMICOLON,
+                Token::RBRACE,
+                Token::SEMICOLON,
+                Token::LET,
+                Token::IDENT("result".to_owned()),
+                Token::ASSIGN,
+                Token::IDENT("add".to_owned()),
+                Token::LPAREN,
+                Token::IDENT("five".to_owned()),
+                Token::COMMA,
+                Token::IDENT("five".to_owned()),
+                Token::RPAREN,
+                Token::SEMICOLON
+            ]
+        )
     }
 }

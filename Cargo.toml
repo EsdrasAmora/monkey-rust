@@ -9,4 +9,5 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.70"
 clap = "4.1.13"
+smol_str = "0.1.24"
 strum = { version = "0.24.1", features = ["derive"] }
