@@ -14,15 +14,21 @@ impl Lexer {
             .filter(|(_, x)| x.is_ascii() && !x.is_ascii_whitespace())
             .peekable();
 
-        let temp = String::with_capacity(4);
+        // println!("Chars: {:?}", chars.collect::<Vec<_>>());
+
+        let mut temp = String::with_capacity(10);
+        let mut tokens = Vec::with_capacity(20);
 
         while let Some((index, char)) = chars.next() {
             if let Ok(token) = TryInto::<Token>::try_into(char) {
-                println!("Found token: {:?}", token);
+                // println!("Found token: {:?}", token);
+                tokens.push(token);
+                continue;
             }
+            temp.push(char)
         }
 
-        Lexer { tokens: Vec::new() }
+        Lexer { tokens: vec![] }
     }
 }
 
