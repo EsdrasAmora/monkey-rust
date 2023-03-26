@@ -29,11 +29,8 @@ impl Lexer {
                     }
                 }
                 '!' => {
-                    if chars
-                        .peek()
-                        .is_some_and(|x| x.eq(&'=').then_some(x))
-                        .is_some()
-                    {
+                    //TODO: use `is_some_and` when it's stable: https://github.com/rust-lang/rust/issues/93050#issuecomment-1019312470
+                    if chars.peek().and_then(|x| x.eq(&'=').then_some(x)).is_some() {
                         chars.next();
                         Some(Token::NOTEQ)
                     } else {
@@ -58,12 +55,12 @@ impl Lexer {
             if char.is_ascii_alphabetic() || char == '_' {
                 temp.push(char);
 
-                while let Some(next_char) = chars.peek() {
-                    if next_char.is_ascii_alphanumeric() || next_char == &'_' {
-                        temp.push(chars.next().unwrap());
-                    } else {
-                        break;
-                    }
+                while chars
+                    .peek()
+                    .and_then(|x| (x.is_ascii_alphanumeric() || x == &'_').then_some(temp.push(*x)))
+                    .is_some()
+                {
+                    chars.next();
                 }
 
                 let token = match temp.as_str() {
@@ -82,14 +79,23 @@ impl Lexer {
 
                 while chars
                     .peek()
-                    .and_then(|x| x.is_ascii_digit().then_some(x))
+                    .and_then(|x| x.is_ascii_digit().then_some(temp.push(*x)))
                     .is_some()
                 {
-                    temp.push(chars.next().unwrap());
+                    chars.next();
                 }
 
-                tokens.push(Token::INT(temp.clone().parse().unwrap()));
+                if let Ok(val) = temp.clone().parse() {
+                    tokens.push(Token::INT(val));
+                } else {
+                    tokens.push(Token::ILLEGAL);
+                }
+
+                temp.clear();
+                continue;
             }
+
+            tokens.push(Token::ILLEGAL);
         }
 
         Lexer { tokens }
@@ -148,7 +154,7 @@ mod tests {
                 Token::LPAREN,
                 Token::IDENT("five".to_owned()),
                 Token::COMMA,
-                Token::IDENT("five".to_owned()),
+                Token::IDENT("ten".to_owned()),
                 Token::RPAREN,
                 Token::SEMICOLON
             ]
