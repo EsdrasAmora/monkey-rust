@@ -1,22 +1,46 @@
+use std::fmt::Display;
+
 fn main() {
-    let v = vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    let v = vec![
+        DummyStruct { name: "1" },
+        DummyStruct { name: "2" },
+        DummyStruct { name: "3" },
+        DummyStruct { name: "4" },
+        DummyStruct { name: "5" },
+    ];
 
-    let mut iter = v.iter();
+    let mut iter = v.into_iter();
 
-    // Consume the first 3 elements
     for _ in 0..3 {
         println!("original: {}", iter.next().unwrap());
     }
 
-    // Create a new iterator that borrows from the original iterator
-    let remaining_iter = iter.clone();
+    let remaining_iter = iter.as_slice();
 
     for val in remaining_iter {
         println!("remaining: {}", val);
     }
 
-    // Use the original iterator again
     for val in iter {
         println!("original: {}", val);
+    }
+}
+
+#[derive(Debug)]
+struct DummyStruct<'a> {
+    name: &'a str,
+}
+
+// impl Clone for DummyStruct<'_> {
+//     fn clone(&self) -> Self {
+//         // panic!();
+//         println!("cloning: {}", self.name);
+//         DummyStruct { name: self.name }
+//     }
+// }
+
+impl Display for DummyStruct<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.name)
     }
 }
