@@ -1,4 +1,4 @@
-mod token;
+pub(crate) mod token;
 use std::iter::Peekable;
 use token::Token;
 

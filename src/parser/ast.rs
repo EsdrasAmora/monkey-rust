@@ -1,13 +1,29 @@
-use id_arena::{Arena, Id};
+use id_arena::Id;
 
-type AstNodeId = Id<AstNode>;
+type NodeId = Id<Node>;
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum AstNode {
-    Const(i64),
-    Var(String),
-    Add { lhs: AstNodeId, rhs: AstNodeId },
-    Sub { lhs: AstNodeId, rhs: AstNodeId },
-    Mul { lhs: AstNodeId, rhs: AstNodeId },
-    Div { lhs: AstNodeId, rhs: AstNodeId },
+pub enum Node {
+    Let { name: String, value: NodeId },
+    Return { value: NodeId },
+    Literal(Literal),
+    Indentifier(String),
+    Add(BinaryExpression),
+    Sub(BinaryExpression),
+    Mul(BinaryExpression),
+    Div(BinaryExpression),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct BinaryExpression {
+    left: NodeId,
+    right: NodeId,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum Literal {
+    Int(i64),
+    String(String),
+    True,
+    False,
 }
