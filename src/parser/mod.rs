@@ -18,24 +18,21 @@ impl Program {
         let mut nodes = Arena::with_capacity(32);
         let mut tokens = lexer.tokens.into_iter();
 
-        // start.cloned()
+        while let Some(current) = tokens.next() {
+            // let a = match current {
+            //     Token::Let => {
+            //         let xxx = tokens.by_ref();
 
-        // while let Some(current) = start.next() {
-        //     match current {
-        //         Token::Let => {
-        //             let b = tokens.next_if(|x| x);
+            //         // while let Some() = xxx {}
 
-        //             // let name = tokens.peek();
-        //             // let value = tokens.next();
+            //         // let name = tokens.peek();
+            //         // let value = tokens.next();
 
-        //             Some(Node::Let {
-        //                 name: "".to_string(),
-        //                 value: 13,
-        //             })
-        //         }
-        //         _ => None,
-        //     }
-        // }
+            //         None
+            //     }
+            //     _ => None,
+            // };
+        }
 
         Program { nodes }
     }
