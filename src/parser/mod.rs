@@ -9,6 +9,8 @@ use crate::lexer::Lexer;
 use ast::Node;
 use id_arena::Arena;
 
+use self::ast::Literal;
+
 struct Program {
     nodes: Arena<Node>,
 }
@@ -18,22 +20,6 @@ impl Program {
         let mut nodes = Arena::with_capacity(32);
         let mut tokens = lexer.tokens.into_iter();
 
-        while let Some(current) = tokens.next() {
-            // let a = match current {
-            //     Token::Let => {
-            //         let xxx = tokens.by_ref();
-
-            //         // while let Some() = xxx {}
-
-            //         // let name = tokens.peek();
-            //         // let value = tokens.next();
-
-            //         None
-            //     }
-            //     _ => None,
-            // };
-        }
-
         Program { nodes }
     }
 
@@ -41,21 +27,35 @@ impl Program {
         current: &Token,
         arena: &mut Arena<Node>,
         tokens: &mut Peekable<std::slice::Iter<Token>>,
+        //return an result
     ) -> Option<Node> {
-        None
-        // match current {
-        //     Token::Let => {
-        //         let b = tokens.next_if(|x| x);
+        match current {
+            Token::Let => {
+                // let x = "value".to_string();
 
-        //         // let name = tokens.peek();
-        //         // let value = tokens.next();
+                // if let Some(Token::Identifier(name)) = tokens.peek() {
+                //     let x = name;
+                // }
 
-        //         Some(Node::Let {
-        //             name: "".to_string(),
-        //             value: 13,
-        //         })
-        //     }
-        //     _ => None,
-        // }
+                // let batata = tokens.peek()?;
+                // if let Token::Identifier(name) = batata {}
+
+                let (Some(bb), Some(aaaa)) = (tokens.next(), tokens.next()) else {
+                            // panic!("Can't segment count item pair: '{s}'");
+                    return None;
+                };
+
+                let let_statment = Node::Let {
+                    name: "".to_string(),
+                    value: arena.alloc(Node::Literal(Literal::Int(1))),
+                };
+                Some(let_statment)
+            }
+            _ => None,
+        }
     }
+}
+
+fn variant_eq<T>(a: &T, b: &T) -> bool {
+    std::mem::discriminant(a) == std::mem::discriminant(b)
 }
