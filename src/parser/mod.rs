@@ -12,12 +12,12 @@ use id_arena::Arena;
 use self::ast::Literal;
 
 struct Program {
-    nodes: Arena<Node>,
+    nodes: Vec<Node>,
 }
 
 impl Program {
     fn new(lexer: Lexer) -> Self {
-        let mut nodes = Arena::with_capacity(32);
+        let mut nodes = Vec::with_capacity(32);
         let mut tokens = lexer.tokens.into_iter();
 
         Program { nodes }
@@ -25,7 +25,7 @@ impl Program {
 
     fn new_helper(
         current: &Token,
-        arena: &mut Arena<Node>,
+        arena: &mut Vec<Node>,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
         //return an result
     ) -> Option<Node> {
@@ -35,7 +35,7 @@ impl Program {
                 let Some(Token::Identifier(name)) = tokens.peek().cloned() else { return None; };
                 tokens.next();
 
-                let Some(Token::Assign) = tokens.peek() else {
+                if tokens.peek() == Some(&Token::Assign) {
                     return None;
                 };
                 tokens.next();
@@ -45,11 +45,36 @@ impl Program {
                 //TODO: remove clone
                 let let_statment = Node::Let {
                     name,
-                    value: arena.alloc(Node::Literal(Literal::Int(1))),
+                    value: {
+                        arena.push(Node::Literal(Literal::Int(1)));
+                        arena.len() - 1
+                    },
                 };
+
                 Some(let_statment)
             }
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_let_statment() {
+        let input = "
+        let x = 5;
+        let y = 10;
+        let foobar = 838383;";
+
+        let lexer = Lexer::new(input);
+        let program = Program::new(lexer);
+
+        assert_eq!(
+            program.nodes,
+            // Arena::from(vec![Node::Literal(Literal::Int(1))])
+        );
     }
 }

@@ -109,7 +109,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_visibility_123() {
+    fn tokenize_sucessfully() {
         let input = r#" 
         let five = 5;
         let ten = 10;
