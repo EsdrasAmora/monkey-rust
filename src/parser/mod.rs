@@ -1,41 +1,48 @@
 mod ast;
 
-use std::default;
 use std::iter::Peekable;
 
 //TODO: how to rexport this?
 use crate::lexer::token::Token;
 use crate::lexer::Lexer;
 use ast::Node;
-use id_arena::Arena;
+use indextree::Arena;
 
 use self::ast::Literal;
 
 struct Program {
-    nodes: Vec<Node>,
+    nodes: Arena<Node>,
 }
 
 impl Program {
     fn new(lexer: Lexer) -> Self {
-        let mut nodes = Vec::with_capacity(32);
-        let mut tokens = lexer.tokens.into_iter();
+        let mut nodes = Arena::with_capacity(32);
+        let mut tokens = lexer.tokens.into_iter().peekable();
+
+        while let Some(current) = tokens.next() {
+            // println!("{:?}", current);
+            if let Some(node) = Self::new_helper(&current, &mut nodes, &mut tokens) {
+                nodes.new_node(node);
+            }
+        }
 
         Program { nodes }
     }
 
     fn new_helper(
         current: &Token,
-        arena: &mut Vec<Node>,
+        arena: &mut Arena<Node>,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
         //return an result
     ) -> Option<Node> {
         match current {
             Token::Let => {
+                // println!("{:?}", current);
                 //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
                 let Some(Token::Identifier(name)) = tokens.peek().cloned() else { return None; };
                 tokens.next();
 
-                if tokens.peek() == Some(&Token::Assign) {
+                if tokens.peek() != Some(&Token::Assign) {
                     return None;
                 };
                 tokens.next();
@@ -44,13 +51,10 @@ impl Program {
 
                 //TODO: remove clone
                 let let_statment = Node::Let {
-                    name,
-                    value: {
-                        arena.push(Node::Literal(Literal::Int(1)));
-                        arena.len() - 1
-                    },
+                    indentifier: name,
+                    value: arena.new_node(Node::Literal(Literal::Int(1))),
                 };
-
+                // println!("{:?}", let_statment);
                 Some(let_statment)
             }
             _ => None,
@@ -72,9 +76,9 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Program::new(lexer);
 
-        assert_eq!(
-            program.nodes,
-            // Arena::from(vec![Node::Literal(Literal::Int(1))])
-        );
+        let result = program.nodes.iter().map(|x| x.get()).collect::<Vec<_>>();
+
+        println!("{:?}", result);
+        // assert_eq!(program.nodes, ()); // Arena::from(vec![Node::Literal(Literal::Int(1))]));
     }
 }
