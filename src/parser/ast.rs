@@ -14,6 +14,12 @@ pub enum Node {
     Div(BinaryExpression),
 }
 
+impl Node {
+    fn matches(a: &Node, b: &Node) -> bool {
+        std::mem::discriminant(a) == std::mem::discriminant(b)
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct BinaryExpression {
     left: NodeId,

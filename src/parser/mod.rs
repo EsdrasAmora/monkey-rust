@@ -26,27 +26,25 @@ impl Program {
     fn new_helper(
         current: &Token,
         arena: &mut Arena<Node>,
-        tokens: &mut Peekable<std::slice::Iter<Token>>,
+        tokens: &mut Peekable<impl Iterator<Item = Token>>,
         //return an result
     ) -> Option<Node> {
         match current {
             Token::Let => {
-                // let x = "value".to_string();
+                //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
+                let Some(Token::Identifier(name)) = tokens.peek().cloned() else { return None; };
+                tokens.next();
 
-                // if let Some(Token::Identifier(name)) = tokens.peek() {
-                //     let x = name;
-                // }
-
-                // let batata = tokens.peek()?;
-                // if let Token::Identifier(name) = batata {}
-
-                let (Some(bb), Some(aaaa)) = (tokens.next(), tokens.next()) else {
-                            // panic!("Can't segment count item pair: '{s}'");
+                let Some(Token::Assign) = tokens.peek() else {
                     return None;
                 };
+                tokens.next();
 
+                while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
+
+                //TODO: remove clone
                 let let_statment = Node::Let {
-                    name: "".to_string(),
+                    name,
                     value: arena.alloc(Node::Literal(Literal::Int(1))),
                 };
                 Some(let_statment)
@@ -54,8 +52,4 @@ impl Program {
             _ => None,
         }
     }
-}
-
-fn variant_eq<T>(a: &T, b: &T) -> bool {
-    std::mem::discriminant(a) == std::mem::discriminant(b)
 }
