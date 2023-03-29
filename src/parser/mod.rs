@@ -29,6 +29,7 @@ impl Parser {
         Parser { nodes, errors }
     }
 
+    //maybe use https://docs.rs/enum-as-inner/0.5.1/enum_as_inner/
     fn new_helper(
         current: &Token,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
@@ -36,12 +37,12 @@ impl Parser {
         match current {
             Token::Let => {
                 //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
-                let Some(Token::Identifier(_)) = tokens.peek() else { bail!("expected token to be {:?}, got {:?} instead",Token::Identifier("foo".to_owned()), tokens.peek()) };
+                let Some(Token::Identifier(_)) = tokens.peek() else { bail!("Expected token to be {:?}, but got {:?} instead",Token::Identifier("foo".to_owned()), tokens.peek()) };
                 let Some(Token::Identifier(name)) = tokens.next() else{ unreachable!() };
 
                 if tokens.peek() != Some(&Token::Assign) {
                     bail!(
-                        "expected assign after indentifier found: {:?}",
+                        "Expected assign after indentifier found: {:?}",
                         tokens.peek()
                     )
                 };
@@ -65,6 +66,7 @@ impl Parser {
 mod tests {
 
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn parse_let_statement() {
@@ -94,6 +96,46 @@ mod tests {
                     value: Box::new(Node::Literal(Literal::Int(5)))
                 }
             ]
+        )
+    }
+
+    #[test]
+    fn parse_with_errors() {
+        let input = "
+        let x 2;
+        let a = 5;
+        let = 10;
+        let 838383;";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+
+        assert_eq!(
+            program
+                .errors
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>(),
+            [
+                "Expected assign after indentifier found: Some(Int(2))",
+                "Cannot parse an statment starting with Int(2)",
+                "Cannot parse an statment starting with Semicolon",
+                "Expected token to be Identifier(\"foo\"), but got Some(Assign) instead",
+                "Cannot parse an statment starting with Assign",
+                "Cannot parse an statment starting with Int(10)",
+                "Cannot parse an statment starting with Semicolon",
+                "Expected token to be Identifier(\"foo\"), but got Some(Int(838383)) instead",
+                "Cannot parse an statment starting with Int(838383)",
+                "Cannot parse an statment starting with Semicolon",
+            ]
+        );
+
+        assert_eq!(
+            program.nodes,
+            [Node::Let {
+                indentifier: "a".to_string(),
+                value: Box::new(Node::Literal(Literal::Int(5)))
+            }]
         )
     }
 }

@@ -12,3 +12,6 @@ clap = "4.1.13"
 indextree = "4.6.0"
 smol_str = "0.1.24"
 strum = { version = "0.24.1", features = ["derive"] }
+
+[dev-dependencies]
+pretty_assertions = "1.3.0"
