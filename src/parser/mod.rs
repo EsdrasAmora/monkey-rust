@@ -2,7 +2,7 @@ pub(crate) mod ast;
 
 use std::iter::Peekable;
 
-use anyhow::{anyhow, bail, ensure, Error, Result};
+use anyhow::{anyhow, ensure, Error, Result};
 
 //TODO: how to rexport this?
 use crate::lexer::token::Token;
@@ -14,37 +14,6 @@ struct Parser {
     nodes: Vec<Statement>,
     errors: Vec<Error>,
 }
-
-pub struct MyStruct<I: Iterator> {
-    iter: I,
-    /// Remember a peeked value, even if it was None.
-    peeked: Option<Option<I::Item>>,
-}
-
-impl<I: Iterator> MyStruct<I> {
-    pub fn new(iter: I) -> MyStruct<I> {
-        MyStruct { iter, peeked: None }
-    }
-}
-
-impl<I: Iterator> Iterator for MyStruct<I> {
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-// #[repr(u8)]
-// enum Precedence {
-//     LOWEST,
-//     EQUALS,      // ==
-//     LESSGREATER, // > or <
-//     SUM,         // +
-//     PRODUCT,     // *
-//     PREFIX,      // -X or !X
-//     CALL,        // myFunction(X)
-// }
 
 impl Parser {
     fn new(lexer: Lexer) -> Self {
