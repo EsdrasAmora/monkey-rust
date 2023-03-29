@@ -50,12 +50,15 @@ impl Parser {
 
                 while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
 
-                let let_statment = Node::Let {
+                Ok(Node::Let {
                     indentifier: name,
                     value: Box::new(Node::Literal(Literal::Int(5))),
-                };
+                })
+            }
+            Token::Return => {
+                while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
 
-                Ok(let_statment)
+                Ok(Node::Return(Box::new(Node::Literal(Literal::Int(-1)))))
             }
             _ => bail!("Cannot parse an statment starting with {:?}", current),
         }
@@ -95,6 +98,28 @@ mod tests {
                     indentifier: "foobar".to_string(),
                     value: Box::new(Node::Literal(Literal::Int(5)))
                 }
+            ]
+        )
+    }
+
+    #[test]
+    fn parse_return_statement() {
+        let input = "
+        return 5;
+        return 10;
+        return 993322;";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+
+        assert_eq!(
+            program.nodes,
+            [
+                Node::Return(Box::new(Node::Literal(Literal::Int(-1)))),
+                Node::Return(Box::new(Node::Literal(Literal::Int(-1)))),
+                Node::Return(Box::new(Node::Literal(Literal::Int(-1))))
             ]
         )
     }
