@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.70"
 clap = "4.1.13"
-id-arena = "2.2.1"
 indextree = "4.6.0"
 smol_str = "0.1.24"
 strum = { version = "0.24.1", features = ["derive"] }

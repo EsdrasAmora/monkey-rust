@@ -5,50 +5,36 @@ use std::iter::Peekable;
 //TODO: how to rexport this?
 use crate::lexer::token::Token;
 use crate::lexer::Lexer;
-use ast::Node;
-use indextree::{Arena, NodeId};
 
-use self::ast::Literal;
+use self::ast::{Literal, Node};
 
 struct Program {
-    root_id: NodeId,
-    nodes: Arena<Node>,
+    nodes: Vec<Node>,
 }
 
 impl Program {
     fn new(lexer: Lexer) -> Self {
-        let mut nodes = Arena::with_capacity(32);
+        let mut nodes = Vec::with_capacity(32);
         let mut tokens = lexer.tokens.into_iter().peekable();
-        let mut root_id = None;
 
         while let Some(current) = tokens.next() {
-            // println!("{:?}", current);
-            if let Some(node) = Self::new_helper(&current, &mut nodes, &mut tokens) {
-                let result = nodes.new_node(node);
-                if root_id.is_none() {
-                    root_id = Some(result);
-                }
-            }
+            //TODO: is this more readable than `if let some`?
+            Self::new_helper(&current, &mut tokens).map(|x| nodes.push(x));
         }
 
-        Program {
-            nodes,
-            root_id: root_id.unwrap(),
-        }
+        Program { nodes }
     }
 
+    //TODO:return an result
     fn new_helper(
         current: &Token,
-        arena: &mut Arena<Node>,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
-        //return an result
     ) -> Option<Node> {
         match current {
             Token::Let => {
-                // println!("{:?}", current);
                 //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
-                let Some(Token::Identifier(name)) = tokens.peek().cloned() else { return None; };
-                tokens.next();
+                let Some(Token::Identifier(_)) = tokens.peek() else { return None; };
+                let Some(Token::Identifier(name)) = tokens.next() else{ return None; };
 
                 if tokens.peek() != Some(&Token::Assign) {
                     return None;
@@ -57,12 +43,11 @@ impl Program {
 
                 while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
 
-                //TODO: remove clone
                 let let_statment = Node::Let {
                     indentifier: name,
-                    value: arena.new_node(Node::Literal(Literal::Int(1))),
+                    value: Box::new(Node::Literal(Literal::Int(5))),
                 };
-                // println!("{:?}", let_statment);
+
                 Some(let_statment)
             }
             _ => None,
@@ -72,12 +57,11 @@ impl Program {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::ast::ConcreteNode;
 
     use super::*;
 
     #[test]
-    fn parse_let_statment() {
+    fn parse_let_statement() {
         let input = "
         let x = 5;
         let y = 10;
@@ -86,18 +70,24 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Program::new(lexer);
 
-        let result = ConcreteNode::from(
-            program.nodes.get(program.root_id).unwrap().get(),
-            &program.nodes,
-        );
+        let result = program.nodes;
 
-        // let result = program
-        //     .nodes
-        //     .iter()
-        //     .map(|x|)
-        //     .collect::<Vec<_>>();
-
-        println!("{:?}", result);
-        // assert_eq!(program.nodes, ()); // Arena::from(vec![Node::Literal(Literal::Int(1))]));
+        assert_eq!(
+            result,
+            [
+                Node::Let {
+                    indentifier: "x".to_string(),
+                    value: Box::new(Node::Literal(Literal::Int(5)))
+                },
+                Node::Let {
+                    indentifier: "y".to_string(),
+                    value: Box::new(Node::Literal(Literal::Int(5)))
+                },
+                Node::Let {
+                    indentifier: "foobar".to_string(),
+                    value: Box::new(Node::Literal(Literal::Int(5)))
+                }
+            ]
+        )
     }
 }
