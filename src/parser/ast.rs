@@ -1,7 +1,7 @@
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Statement {
     Let {
-        indentifier: String,
+        identifier: String,
         value: Box<Expression>,
     },
     Return(Box<Expression>),

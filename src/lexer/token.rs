@@ -37,11 +37,26 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn parse_prefix(&self, expression: Expression) -> Expression {
-        Expression::Literal(Literal::Nill)
+    // pub fn parse_prefix<'a>(
+    //     &'a self,
+    //     expression: &'a Expression,
+    // ) -> impl Fn(&'a Expression) -> Expression {
+    //     // Some(Expression::Literal(Literal::Nill))
+    //     move |x| match self {
+    //         Token::Minus => Expression::Literal(Literal::Int(-1)),
+    //         _ => todo!(),
+    //     }
+    //     // todo!()
+    // }
+    //add precedence.
+    pub fn parse_prefix(&self) -> Option<Expression> {
+        match self {
+            Token::Identifier(name) => Some(Expression::Identifier(name.clone())),
+            _ => None,
+        }
     }
-    pub fn parse_infix(&self) -> Expression {
-        Expression::Literal(Literal::Nill)
+    pub fn parse_infix(&self, expression: Expression) -> Option<Expression> {
+        Some(Expression::Literal(Literal::Nill))
     }
     pub fn into_identifier(self) -> Option<String> {
         match self {

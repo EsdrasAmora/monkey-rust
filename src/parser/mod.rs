@@ -15,16 +15,36 @@ struct Parser {
     errors: Vec<Error>,
 }
 
-#[repr(u8)]
-enum Precedence {
-    LOWEST,
-    EQUALS,      // ==
-    LESSGREATER, // > or <
-    SUM,         // +
-    PRODUCT,     // *
-    PREFIX,      // -X or !X
-    CALL,        // myFunction(X)
+pub struct MyStruct<I: Iterator> {
+    iter: I,
+    /// Remember a peeked value, even if it was None.
+    peeked: Option<Option<I::Item>>,
 }
+
+impl<I: Iterator> MyStruct<I> {
+    pub fn new(iter: I) -> MyStruct<I> {
+        MyStruct { iter, peeked: None }
+    }
+}
+
+impl<I: Iterator> Iterator for MyStruct<I> {
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+// #[repr(u8)]
+// enum Precedence {
+//     LOWEST,
+//     EQUALS,      // ==
+//     LESSGREATER, // > or <
+//     SUM,         // +
+//     PRODUCT,     // *
+//     PREFIX,      // -X or !X
+//     CALL,        // myFunction(X)
+// }
 
 impl Parser {
     fn new(lexer: Lexer) -> Self {
@@ -60,14 +80,14 @@ impl Parser {
 
                 ensure!(
                     tokens.next_if_eq(&Token::Assign).is_some(),
-                    "Expected assign after indentifier found: {:?}",
+                    "Expected assign after identifier found: {:?}",
                     tokens.peek()
                 );
 
                 while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
 
                 Ok(Statement::Let {
-                    indentifier: name,
+                    identifier: name,
                     value: Box::new(Expression::Literal(Literal::Int(5))),
                 })
             }
@@ -79,10 +99,15 @@ impl Parser {
                 ))))
             }
             _ => {
-                // Ok(Statement::Expression(Box::new(Expression::Literal(
-                //     Literal::Int(-1),
-                // ))))
-                bail!("Cannot parse an statment starting with {:?}", current)
+                let expression = tokens
+                    .next_if(|x| x.parse_prefix().is_some())
+                    .and_then(|x| x.parse_prefix())
+                    .ok_or(anyhow!(
+                        "Cannot parse an expression starting with {:?}",
+                        current
+                    ))?;
+
+                Ok(Statement::Return(Box::new(expression)))
             }
         }
     }
@@ -110,15 +135,15 @@ mod tests {
             program.nodes,
             [
                 Statement::Let {
-                    indentifier: "x".to_string(),
+                    identifier: "x".to_string(),
                     value: Box::new(Expression::Literal(Literal::Int(5)))
                 },
                 Statement::Let {
-                    indentifier: "y".to_string(),
+                    identifier: "y".to_string(),
                     value: Box::new(Expression::Literal(Literal::Int(5)))
                 },
                 Statement::Let {
-                    indentifier: "foobar".to_string(),
+                    identifier: "foobar".to_string(),
                     value: Box::new(Expression::Literal(Literal::Int(5)))
                 }
             ]
@@ -147,6 +172,22 @@ mod tests {
         )
     }
 
+    fn parse_expression_statement() {
+        let input = "foobar;";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+
+        assert_eq!(
+            program.nodes,
+            [Statement::Return(Box::new(Expression::Literal(
+                Literal::Int(-1)
+            ))),]
+        )
+    }
+
     #[test]
     fn parse_with_errors() {
         let input = "
@@ -165,7 +206,7 @@ mod tests {
                 .map(|x| x.to_string())
                 .collect::<Vec<_>>(),
             [
-                "Expected assign after indentifier found: Some(Int(2))",
+                "Expected assign after identifier found: Some(Int(2))",
                 "Cannot parse an statment starting with Int(2)",
                 "Cannot parse an statment starting with Semicolon",
                 "Expected token to be Identifier(\"foo\"), but got Some(Assign) instead",
@@ -181,7 +222,7 @@ mod tests {
         assert_eq!(
             program.nodes,
             [Statement::Let {
-                indentifier: "a".to_string(),
+                identifier: "a".to_string(),
                 value: Box::new(Expression::Literal(Literal::Int(5)))
             }]
         )
