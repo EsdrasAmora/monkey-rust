@@ -1,16 +1,21 @@
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Node {
+pub enum Statement {
     Let {
         indentifier: String,
-        value: Box<Node>,
+        value: Box<Expression>,
     },
-    Return(Box<Node>),
+    Return(Box<Expression>),
+    Expression(Box<Expression>),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Expression {
     Literal(Literal),
-    // Indentifier(String),
-    // Add(BinaryExpression),
-    // Sub(BinaryExpression),
-    // Mul(BinaryExpression),
-    // Div(BinaryExpression),
+    Identifier(String),
+    Add(Box<Expression>),
+    Sub(Box<Expression>),
+    Mul(Box<Expression>),
+    Div(Box<Expression>),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -19,6 +24,7 @@ pub enum Literal {
     String(String),
     True,
     False,
+    Nill,
 }
 
 // use indextree::{Arena, NodeId};

@@ -1,17 +1,17 @@
-mod ast;
+pub(crate) mod ast;
 
 use std::iter::Peekable;
 
-use anyhow::{bail, Error, Result};
+use anyhow::{anyhow, bail, ensure, Error, Result};
 
 //TODO: how to rexport this?
 use crate::lexer::token::Token;
 use crate::lexer::Lexer;
 
-use self::ast::{Literal, Node};
+use self::ast::{Expression, Literal, Statement};
 
 struct Parser {
-    nodes: Vec<Node>,
+    nodes: Vec<Statement>,
     errors: Vec<Error>,
 }
 
@@ -33,32 +33,39 @@ impl Parser {
     fn new_helper(
         current: &Token,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
-    ) -> Result<Node> {
+    ) -> Result<Statement> {
         match current {
             Token::Let => {
                 //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
-                let Some(Token::Identifier(_)) = tokens.peek() else { bail!("Expected token to be {:?}, but got {:?} instead",Token::Identifier("foo".to_owned()), tokens.peek()) };
-                let Some(Token::Identifier(name)) = tokens.next() else{ unreachable!() };
+                //find a way to peak them consume the iterator;
+                let name = tokens
+                    .next_if(Token::is_identifier)
+                    .and_then(Token::into_identifier)
+                    .ok_or(anyhow!(
+                        "Expected token to be {:?}, but got {:?} instead",
+                        Token::Identifier("foo".to_owned()),
+                        tokens.peek(),
+                    ))?;
 
-                if tokens.peek() != Some(&Token::Assign) {
-                    bail!(
-                        "Expected assign after indentifier found: {:?}",
-                        tokens.peek()
-                    )
-                };
-                tokens.next();
+                ensure!(
+                    tokens.next_if_eq(&Token::Assign).is_some(),
+                    "Expected assign after indentifier found: {:?}",
+                    tokens.peek()
+                );
 
                 while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
 
-                Ok(Node::Let {
+                Ok(Statement::Let {
                     indentifier: name,
-                    value: Box::new(Node::Literal(Literal::Int(5))),
+                    value: Box::new(Expression::Literal(Literal::Int(5))),
                 })
             }
             Token::Return => {
                 while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
 
-                Ok(Node::Return(Box::new(Node::Literal(Literal::Int(-1)))))
+                Ok(Statement::Return(Box::new(Expression::Literal(
+                    Literal::Int(-1),
+                ))))
             }
             _ => bail!("Cannot parse an statment starting with {:?}", current),
         }
@@ -86,17 +93,17 @@ mod tests {
         assert_eq!(
             program.nodes,
             [
-                Node::Let {
+                Statement::Let {
                     indentifier: "x".to_string(),
-                    value: Box::new(Node::Literal(Literal::Int(5)))
+                    value: Box::new(Expression::Literal(Literal::Int(5)))
                 },
-                Node::Let {
+                Statement::Let {
                     indentifier: "y".to_string(),
-                    value: Box::new(Node::Literal(Literal::Int(5)))
+                    value: Box::new(Expression::Literal(Literal::Int(5)))
                 },
-                Node::Let {
+                Statement::Let {
                     indentifier: "foobar".to_string(),
-                    value: Box::new(Node::Literal(Literal::Int(5)))
+                    value: Box::new(Expression::Literal(Literal::Int(5)))
                 }
             ]
         )
@@ -117,9 +124,9 @@ mod tests {
         assert_eq!(
             program.nodes,
             [
-                Node::Return(Box::new(Node::Literal(Literal::Int(-1)))),
-                Node::Return(Box::new(Node::Literal(Literal::Int(-1)))),
-                Node::Return(Box::new(Node::Literal(Literal::Int(-1))))
+                Statement::Return(Box::new(Expression::Literal(Literal::Int(-1)))),
+                Statement::Return(Box::new(Expression::Literal(Literal::Int(-1)))),
+                Statement::Return(Box::new(Expression::Literal(Literal::Int(-1))))
             ]
         )
     }
@@ -157,9 +164,9 @@ mod tests {
 
         assert_eq!(
             program.nodes,
-            [Node::Let {
+            [Statement::Let {
                 indentifier: "a".to_string(),
-                value: Box::new(Node::Literal(Literal::Int(5)))
+                value: Box::new(Expression::Literal(Literal::Int(5)))
             }]
         )
     }
