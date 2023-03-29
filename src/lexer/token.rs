@@ -37,10 +37,10 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn parse_prefix(expression: Expression) -> Expression {
+    pub fn parse_prefix(&self, expression: Expression) -> Expression {
         Expression::Literal(Literal::Nill)
     }
-    pub fn parse_infix() -> Expression {
+    pub fn parse_infix(&self) -> Expression {
         Expression::Literal(Literal::Nill)
     }
     pub fn into_identifier(self) -> Option<String> {

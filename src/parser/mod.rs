@@ -15,6 +15,17 @@ struct Parser {
     errors: Vec<Error>,
 }
 
+#[repr(u8)]
+enum Precedence {
+    LOWEST,
+    EQUALS,      // ==
+    LESSGREATER, // > or <
+    SUM,         // +
+    PRODUCT,     // *
+    PREFIX,      // -X or !X
+    CALL,        // myFunction(X)
+}
+
 impl Parser {
     fn new(lexer: Lexer) -> Self {
         let mut nodes = Vec::with_capacity(32);
@@ -67,7 +78,12 @@ impl Parser {
                     Literal::Int(-1),
                 ))))
             }
-            _ => bail!("Cannot parse an statment starting with {:?}", current),
+            _ => {
+                // Ok(Statement::Expression(Box::new(Expression::Literal(
+                //     Literal::Int(-1),
+                // ))))
+                bail!("Cannot parse an statment starting with {:?}", current)
+            }
         }
     }
 }
