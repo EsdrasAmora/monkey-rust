@@ -6,11 +6,12 @@ use std::iter::Peekable;
 use crate::lexer::token::Token;
 use crate::lexer::Lexer;
 use ast::Node;
-use indextree::Arena;
+use indextree::{Arena, NodeId};
 
 use self::ast::Literal;
 
 struct Program {
+    root_id: NodeId,
     nodes: Arena<Node>,
 }
 
@@ -18,15 +19,22 @@ impl Program {
     fn new(lexer: Lexer) -> Self {
         let mut nodes = Arena::with_capacity(32);
         let mut tokens = lexer.tokens.into_iter().peekable();
+        let mut root_id = None;
 
         while let Some(current) = tokens.next() {
             // println!("{:?}", current);
             if let Some(node) = Self::new_helper(&current, &mut nodes, &mut tokens) {
-                nodes.new_node(node);
+                let result = nodes.new_node(node);
+                if root_id.is_none() {
+                    root_id = Some(result);
+                }
             }
         }
 
-        Program { nodes }
+        Program {
+            nodes,
+            root_id: root_id.unwrap(),
+        }
     }
 
     fn new_helper(
@@ -64,6 +72,8 @@ impl Program {
 
 #[cfg(test)]
 mod tests {
+    use crate::parser::ast::ConcreteNode;
+
     use super::*;
 
     #[test]
@@ -76,7 +86,16 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Program::new(lexer);
 
-        let result = program.nodes.iter().map(|x| x.get()).collect::<Vec<_>>();
+        let result = ConcreteNode::from(
+            program.nodes.get(program.root_id).unwrap().get(),
+            &program.nodes,
+        );
+
+        // let result = program
+        //     .nodes
+        //     .iter()
+        //     .map(|x|)
+        //     .collect::<Vec<_>>();
 
         println!("{:?}", result);
         // assert_eq!(program.nodes, ()); // Arena::from(vec![Node::Literal(Literal::Int(1))]));

@@ -10,19 +10,36 @@ pub enum Node {
     // Mul(BinaryExpression),
     // Div(BinaryExpression),
 }
-
-enum ConcreteNode<'a> {
+//TODO: split Node into statements and expressions or add a vec of nodeIds to Program and use them as rootNode pointers;
+#[derive(Debug)]
+pub enum ConcreteNode {
     Let {
         indentifier: String,
-        value: &'a ConcreteNode<'a>,
+        value: Box<ConcreteNode>,
     },
-    Return(&'a ConcreteNode<'a>),
+    Return(Box<ConcreteNode>),
     Literal(Literal),
     // Indentifier(String),
     // Add(BinaryExpression),
     // Sub(BinaryExpression),
     // Mul(BinaryExpression),
     // Div(BinaryExpression),
+}
+
+impl ConcreteNode {
+    pub fn from(value: &Node, arena: &Arena<Node>) -> Self {
+        match value {
+            Node::Let { indentifier, value } => ConcreteNode::Let {
+                indentifier: indentifier.clone(),
+                value: Box::from(ConcreteNode::from(arena.get(*value).unwrap().get(), arena)),
+            },
+            Node::Return { value } => ConcreteNode::Return(Box::from(ConcreteNode::from(
+                arena.get(*value).unwrap().get(),
+                arena,
+            ))),
+            Node::Literal(literal) => ConcreteNode::Literal(literal.clone()),
+        }
+    }
 }
 
 impl Node {
@@ -42,7 +59,7 @@ pub struct BinaryExpression {
     right: NodeId,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal {
     Int(i64),
     String(String),
