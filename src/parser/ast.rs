@@ -1,5 +1,3 @@
-use crate::lexer::token::Token;
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Statement {
     Let {

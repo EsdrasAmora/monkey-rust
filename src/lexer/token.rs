@@ -52,7 +52,7 @@ impl Token {
 
         while tokens
             .peek()
-            .filter(|x| x != &&Token::Semicolon && x.precedence() > precedence)
+            .filter(|x| x != &&Token::Semicolon && precedence < x.precedence())
             .is_some()
         {
             let infix = tokens
@@ -105,17 +105,17 @@ impl Token {
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
         left: Expression,
     ) -> Option<Expression> {
-        let expression_type: Option<fn(BinaryExpression) -> Expression> = match self {
-            Token::Plus => Some(Box::new(move |x: BinaryExpression| Expression::Add(x))),
-            Token::Minus => Some(Box::new(move |x: BinaryExpression| Expression::Sub(x))),
-            Token::Slash => Some(Box::new(move |x: BinaryExpression| Expression::Div(x))),
-            Token::Asterisk => Some(Box::new(move |x: BinaryExpression| Expression::Mul(x))),
-            Token::Eq => Some(Box::new(move |x: BinaryExpression| Expression::Eq(x))),
-            Token::NotEq => Some(Box::new(move |x: BinaryExpression| Expression::NotEq(x))),
-            Token::Lt => Some(Box::new(move |x: BinaryExpression| Expression::Lt(x))),
-            Token::Gt => Some(Box::new(move |x: BinaryExpression| Expression::Gt(x))),
-            _ => None,
-        }?;
+        let expression_type = match self {
+            Token::Plus => Expression::Add,
+            Token::Minus => Expression::Sub,
+            Token::Slash => Expression::Div,
+            Token::Asterisk => Expression::Mul,
+            Token::Eq => Expression::Eq,
+            Token::NotEq => Expression::NotEq,
+            Token::Lt => Expression::Lt,
+            Token::Gt => Expression::Gt,
+            _ => return None,
+        };
 
         let precedence = self.precedence();
         let next = tokens.next()?;
