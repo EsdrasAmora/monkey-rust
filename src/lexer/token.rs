@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 
-use crate::parser::ast::{BynaryExpression, Expression, Literal};
+use crate::parser::ast::{BinaryExpression, Expression, Literal};
 use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,26 +105,26 @@ impl Token {
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
         left: Expression,
     ) -> Option<Expression> {
-        match self {
-            Token::Plus
-            | Token::Minus
-            | Token::Slash
-            | Token::Asterisk
-            | Token::Eq
-            | Token::NotEq
-            | Token::Lt
-            | Token::Gt => {
-                let precedence = self.precedence();
-                let next = tokens.next()?;
-                let right = next.parse_expression(tokens, precedence).ok()?;
-
-                Some(Expression::Add(BynaryExpression {
-                    lhs: Box::new(left),
-                    rhs: Box::new(right),
-                }))
-            }
+        let expression_type: Option<fn(BinaryExpression) -> Expression> = match self {
+            Token::Plus => Some(Box::new(move |x: BinaryExpression| Expression::Add(x))),
+            Token::Minus => Some(Box::new(move |x: BinaryExpression| Expression::Sub(x))),
+            Token::Slash => Some(Box::new(move |x: BinaryExpression| Expression::Div(x))),
+            Token::Asterisk => Some(Box::new(move |x: BinaryExpression| Expression::Mul(x))),
+            Token::Eq => Some(Box::new(move |x: BinaryExpression| Expression::Eq(x))),
+            Token::NotEq => Some(Box::new(move |x: BinaryExpression| Expression::NotEq(x))),
+            Token::Lt => Some(Box::new(move |x: BinaryExpression| Expression::Lt(x))),
+            Token::Gt => Some(Box::new(move |x: BinaryExpression| Expression::Gt(x))),
             _ => None,
-        }
+        }?;
+
+        let precedence = self.precedence();
+        let next = tokens.next()?;
+        let right = next.parse_expression(tokens, precedence).ok()?;
+
+        Some(expression_type(BinaryExpression {
+            lhs: Box::new(left),
+            rhs: Box::new(right),
+        }))
     }
 
     #[inline]
