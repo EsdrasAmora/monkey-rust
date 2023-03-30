@@ -8,7 +8,7 @@ use anyhow::{anyhow, ensure, Error, Result};
 use crate::lexer::token::Token;
 use crate::lexer::Lexer;
 
-use self::ast::{Expression, Literal, Statement};
+use self::ast::{Literal, Statement};
 
 struct Parser {
     nodes: Vec<Statement>,
@@ -57,21 +57,16 @@ impl Parser {
 
                 Ok(Statement::Let {
                     identifier: name,
-                    value: Box::new(Expression::Literal(Literal::Int(5))),
+                    value: Box::new(Literal::Int(5).into()),
                 })
             }
             Token::Return => {
                 while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
-
-                Ok(Statement::Return(Box::new(Expression::Literal(
-                    Literal::Int(-1),
-                ))))
+                Ok(Statement::Return(Box::new(Literal::Int(-1).into())))
             }
             _ => {
-                let expression = current.parse_expression(tokens, 0)?;
-
+                let expression = current.parse_expression(tokens, 1)?;
                 tokens.next_if_eq(&Token::Semicolon);
-
                 Ok(Statement::Expression(Box::new(expression)))
             }
         }
@@ -81,8 +76,38 @@ impl Parser {
 #[cfg(test)]
 mod tests {
 
+    use crate::parser::ast::Expression;
+
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn parse_prefix_expression() {
+        let input = "
+        -1;
+        !5
+        !!-2;";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+
+        println!("{:?}", program.nodes);
+
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+
+        assert_eq!(
+            program.nodes,
+            [
+                Statement::Expression(Box::new(Expression::Oposite(Box::new(
+                    Literal::Int(1).into()
+                )))),
+                Statement::Expression(Box::new(Expression::Not(Box::new(Literal::Int(5).into())))),
+                Statement::Expression(Box::new(Expression::Not(Box::new(Expression::Not(
+                    Box::new(Expression::Oposite(Box::new(Literal::Int(2).into())))
+                )))))
+            ]
+        )
+    }
 
     #[test]
     fn parse_expression_statement_identifier() {
@@ -112,9 +137,7 @@ mod tests {
 
         assert_eq!(
             program.nodes,
-            [Statement::Expression(Box::new(Expression::Literal(
-                Literal::Int(3)
-            )))]
+            [Statement::Expression(Box::new(Literal::Int(3).into()))]
         )
     }
 
@@ -135,15 +158,15 @@ mod tests {
             [
                 Statement::Let {
                     identifier: "x".to_string(),
-                    value: Box::new(Expression::Literal(Literal::Int(5)))
+                    value: Box::new(Literal::Int(5).into())
                 },
                 Statement::Let {
                     identifier: "y".to_string(),
-                    value: Box::new(Expression::Literal(Literal::Int(5)))
+                    value: Box::new(Literal::Int(5).into())
                 },
                 Statement::Let {
                     identifier: "foobar".to_string(),
-                    value: Box::new(Expression::Literal(Literal::Int(5)))
+                    value: Box::new(Literal::Int(5).into())
                 }
             ]
         )
@@ -164,9 +187,9 @@ mod tests {
         assert_eq!(
             program.nodes,
             [
-                Statement::Return(Box::new(Expression::Literal(Literal::Int(-1)))),
-                Statement::Return(Box::new(Expression::Literal(Literal::Int(-1)))),
-                Statement::Return(Box::new(Expression::Literal(Literal::Int(-1))))
+                Statement::Return(Box::new(Literal::Int(-1).into())),
+                Statement::Return(Box::new(Literal::Int(-1).into())),
+                Statement::Return(Box::new(Literal::Int(-1).into()))
             ]
         )
     }

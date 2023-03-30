@@ -8,27 +8,39 @@ pub enum Statement {
     Expression(Box<Expression>),
 }
 
+//TODO: create a builder for this.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expression {
     Literal(Literal),
     Identifier(String),
-    Negative(Box<Expression>),
-    Negate(Box<Expression>),
-    Eq(Box<Expression>),
-    LT(Box<Expression>),
-    GT(Box<Expression>),
-    Add(Box<Expression>),
-    Sub(Box<Expression>),
-    Mul(Box<Expression>),
-    Div(Box<Expression>),
+    Oposite(Box<Expression>),
+    Not(Box<Expression>),
+    Eq(BynaryExpression),
+    NotEq(BynaryExpression),
+    LT(BynaryExpression),
+    GT(BynaryExpression),
+    Add(BynaryExpression),
+    Sub(BynaryExpression),
+    Mul(BynaryExpression),
+    Div(BynaryExpression),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct BynaryExpression {
+    lhs: Box<Expression>,
+    rhs: Box<Expression>,
 }
 //maybe precedence should be a method on Token.
 impl Expression {
+    fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+
     fn precedence(&self) -> u8 {
         match self {
             Expression::Literal(_) | Expression::Identifier(_) => 0,
-            Expression::Negative(_) | Expression::Negate(_) => 1,
-            Expression::Eq(_) => 2,
+            Expression::Oposite(_) | Expression::Not(_) => 1,
+            Expression::Eq(_) | Expression::NotEq(_) => 2,
             Expression::LT(_) | Expression::GT(_) => 3,
             Expression::Mul(_) | Expression::Div(_) => 4,
             Expression::Add(_) | Expression::Sub(_) => 5,
@@ -43,4 +55,10 @@ pub enum Literal {
     True,
     False,
     Nill,
+}
+
+impl From<Literal> for Expression {
+    fn from(literal: Literal) -> Self {
+        Expression::Literal(literal)
+    }
 }

@@ -62,18 +62,13 @@ impl Token {
             Token::Identifier(name) => Some(Expression::Identifier(name.clone())),
             Token::Int(value) => Some(Expression::Literal(Literal::Int(*value))),
             Token::Bang => {
-                // tokens.next();
-                //aa
-                Some(Expression::Negate(Box::new(Expression::Identifier(
-                    "a".to_string(),
-                ))))
+                //TODO: fix error propagation;
+                let right = tokens.next()?.parse_expression(tokens, 6).ok()?;
+                Some(Expression::Not(Box::new(right)))
             }
             Token::Minus => {
-                // tokens.next();
-                //aa
-                Some(Expression::Negate(Box::new(Expression::Identifier(
-                    "a".to_string(),
-                ))))
+                let right = tokens.next()?.parse_expression(tokens, 6).ok()?;
+                Some(Expression::Oposite(Box::new(right)))
             }
             _ => None,
         }
