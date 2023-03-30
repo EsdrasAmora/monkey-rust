@@ -22,7 +22,7 @@ impl Parser {
         let mut tokens = lexer.tokens.into_iter().peekable();
 
         while let Some(current) = tokens.next() {
-            Self::new_helper(&current, &mut tokens)
+            Self::new_helper(current, &mut tokens)
                 .map_or_else(|err| errors.push(err), |val| nodes.push(val))
         }
 
@@ -31,7 +31,7 @@ impl Parser {
 
     //maybe use https://docs.rs/enum-as-inner/0.5.1/enum_as_inner/
     fn new_helper(
-        current: &Token,
+        current: Token,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
     ) -> Result<Statement> {
         match current {
@@ -68,10 +68,7 @@ impl Parser {
                 ))))
             }
             _ => {
-                let expression = current.parse_prefix().ok_or(anyhow!(
-                    "Cannot parse an expression starting with {:?}",
-                    current
-                ))?;
+                let expression = current.parse_expression(tokens, 0)?;
 
                 tokens.next_if_eq(&Token::Semicolon);
 

@@ -1,3 +1,5 @@
+use std::iter::Peekable;
+
 use crate::parser::ast::{Expression, Literal};
 use anyhow::{anyhow, Result};
 
@@ -38,17 +40,24 @@ pub enum Token {
 }
 
 impl Token {
-    fn parse_expression(self, precedence: u8) -> Result<Expression> {
-        let left_expression = self.parse_prefix().ok_or(anyhow!(
+    pub fn parse_expression(
+        self,
+        tokens: &mut Peekable<impl Iterator<Item = Token>>,
+        precedence: u8,
+    ) -> Result<Expression> {
+        let left_expression = self.parse_prefix(tokens).ok_or(anyhow!(
             "Cannot parse an expression starting with {:?}",
             self
         ))?;
 
-        return Ok(left_expression);
+        Ok(left_expression)
     }
 
     //add precedence.
-    pub fn parse_prefix(&self) -> Option<Expression> {
+    fn parse_prefix(
+        &self,
+        tokens: &mut Peekable<impl Iterator<Item = Token>>,
+    ) -> Option<Expression> {
         match self {
             Token::Identifier(name) => Some(Expression::Identifier(name.clone())),
             Token::Int(value) => Some(Expression::Literal(Literal::Int(*value))),
@@ -69,9 +78,14 @@ impl Token {
             _ => None,
         }
     }
-    pub fn parse_infix(&self, expression: Expression) -> Option<Expression> {
+    fn parse_infix(
+        &self,
+        tokens: &mut Peekable<impl Iterator<Item = Token>>,
+        expression: Expression,
+    ) -> Option<Expression> {
         Some(Expression::Literal(Literal::Nill))
     }
+
     pub fn into_identifier(self) -> Option<String> {
         match self {
             Token::Identifier(name) => Some(name),

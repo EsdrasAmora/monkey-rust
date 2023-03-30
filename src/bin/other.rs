@@ -17,9 +17,7 @@ impl<I: Iterator> PeekableWrapper<I> {
     {
         let iter = self.inner.by_ref();
         for _ in 0..n {
-            if iter.peek().is_none() {
-                return None;
-            }
+            iter.peek()?;
             iter.next();
         }
         iter.peek()
