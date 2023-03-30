@@ -13,8 +13,8 @@ pub enum Statement {
 pub enum Expression {
     Literal(Literal),
     Identifier(String),
-    Oposite(Box<Expression>),
-    Not(Box<Expression>),
+    Oposite(UnaryExpression),
+    Not(UnaryExpression),
     Eq(BynaryExpression),
     NotEq(BynaryExpression),
     LT(BynaryExpression),
@@ -25,10 +25,12 @@ pub enum Expression {
     Div(BynaryExpression),
 }
 
+type UnaryExpression = Box<Expression>;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BynaryExpression {
-    lhs: Box<Expression>,
-    rhs: Box<Expression>,
+    pub lhs: Box<Expression>,
+    pub rhs: Box<Expression>,
 }
 //maybe precedence should be a method on Token.
 impl Expression {

@@ -75,11 +75,26 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-
-    use crate::parser::ast::Expression;
-
     use super::*;
+    use crate::parser::ast::Expression;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn parse_infix_expression() {
+        let input = "
+        5 + 5;
+        5 - 5;
+        5 * 5;
+        5 / 5;
+        5 > 5;
+        5 < 5;
+        5 == 5;
+        5 != 5;";
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        assert_eq!(program.nodes, [])
+    }
 
     #[test]
     fn parse_prefix_expression() {
@@ -87,14 +102,9 @@ mod tests {
         -1;
         !5
         !!-2;";
-
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
-
-        println!("{:?}", program.nodes);
-
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-
         assert_eq!(
             program.nodes,
             [
@@ -112,12 +122,9 @@ mod tests {
     #[test]
     fn parse_expression_statement_identifier() {
         let input = "foobar;";
-
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
-
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-
         assert_eq!(
             program.nodes,
             [Statement::Expression(Box::new(Expression::Identifier(
@@ -129,12 +136,9 @@ mod tests {
     #[test]
     fn parse_expression_statement_integer_literal() {
         let input = "3;";
-
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
-
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-
         assert_eq!(
             program.nodes,
             [Statement::Expression(Box::new(Literal::Int(3).into()))]
@@ -147,12 +151,9 @@ mod tests {
         let x = false;
         let y = 10;
         let foobar = true;";
-
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
-
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-
         assert_eq!(
             program.nodes,
             [
@@ -178,12 +179,9 @@ mod tests {
         return 5;
         return 10;
         return 993322;";
-
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
-
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-
         assert_eq!(
             program.nodes,
             [
