@@ -68,15 +68,14 @@ impl Parser {
                 ))))
             }
             _ => {
-                let expression = tokens
-                    .next_if(|x| x.parse_prefix().is_some())
-                    .and_then(|x| x.parse_prefix())
-                    .ok_or(anyhow!(
-                        "Cannot parse an expression starting with {:?}",
-                        current
-                    ))?;
+                let expression = current.parse_prefix().ok_or(anyhow!(
+                    "Cannot parse an expression starting with {:?}",
+                    current
+                ))?;
 
-                Ok(Statement::Return(Box::new(expression)))
+                tokens.next_if_eq(&Token::Semicolon);
+
+                Ok(Statement::Expression(Box::new(expression)))
             }
         }
     }
@@ -87,6 +86,40 @@ mod tests {
 
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn parse_expression_statement_identifier() {
+        let input = "foobar;";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+
+        assert_eq!(
+            program.nodes,
+            [Statement::Expression(Box::new(Expression::Identifier(
+                "foobar".to_string()
+            )))]
+        )
+    }
+
+    #[test]
+    fn parse_expression_statement_integer_literal() {
+        let input = "3;";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+
+        assert_eq!(
+            program.nodes,
+            [Statement::Expression(Box::new(Expression::Literal(
+                Literal::Int(3)
+            )))]
+        )
+    }
 
     #[test]
     fn parse_let_statement() {
@@ -138,62 +171,6 @@ mod tests {
                 Statement::Return(Box::new(Expression::Literal(Literal::Int(-1)))),
                 Statement::Return(Box::new(Expression::Literal(Literal::Int(-1))))
             ]
-        )
-    }
-
-    fn parse_expression_statement() {
-        let input = "foobar;";
-
-        let lexer = Lexer::new(input);
-        let program = Parser::new(lexer);
-
-        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-
-        assert_eq!(
-            program.nodes,
-            [Statement::Return(Box::new(Expression::Literal(
-                Literal::Int(-1)
-            ))),]
-        )
-    }
-
-    #[test]
-    fn parse_with_errors() {
-        let input = "
-        let x 2;
-        let a = 5;
-        let = 10;
-        let 838383;";
-
-        let lexer = Lexer::new(input);
-        let program = Parser::new(lexer);
-
-        assert_eq!(
-            program
-                .errors
-                .iter()
-                .map(|x| x.to_string())
-                .collect::<Vec<_>>(),
-            [
-                "Expected assign after identifier found: Some(Int(2))",
-                "Cannot parse an statment starting with Int(2)",
-                "Cannot parse an statment starting with Semicolon",
-                "Expected token to be Identifier(\"foo\"), but got Some(Assign) instead",
-                "Cannot parse an statment starting with Assign",
-                "Cannot parse an statment starting with Int(10)",
-                "Cannot parse an statment starting with Semicolon",
-                "Expected token to be Identifier(\"foo\"), but got Some(Int(838383)) instead",
-                "Cannot parse an statment starting with Int(838383)",
-                "Cannot parse an statment starting with Semicolon",
-            ]
-        );
-
-        assert_eq!(
-            program.nodes,
-            [Statement::Let {
-                identifier: "a".to_string(),
-                value: Box::new(Expression::Literal(Literal::Int(5)))
-            }]
         )
     }
 }

@@ -1,4 +1,5 @@
 use crate::parser::ast::{Expression, Literal};
+use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
@@ -37,21 +38,34 @@ pub enum Token {
 }
 
 impl Token {
-    // pub fn parse_prefix<'a>(
-    //     &'a self,
-    //     expression: &'a Expression,
-    // ) -> impl Fn(&'a Expression) -> Expression {
-    //     // Some(Expression::Literal(Literal::Nill))
-    //     move |x| match self {
-    //         Token::Minus => Expression::Literal(Literal::Int(-1)),
-    //         _ => todo!(),
-    //     }
-    //     // todo!()
-    // }
+    fn parse_expression(self, precedence: u8) -> Result<Expression> {
+        let left_expression = self.parse_prefix().ok_or(anyhow!(
+            "Cannot parse an expression starting with {:?}",
+            self
+        ))?;
+
+        return Ok(left_expression);
+    }
+
     //add precedence.
     pub fn parse_prefix(&self) -> Option<Expression> {
         match self {
             Token::Identifier(name) => Some(Expression::Identifier(name.clone())),
+            Token::Int(value) => Some(Expression::Literal(Literal::Int(*value))),
+            Token::Bang => {
+                // tokens.next();
+                //aa
+                Some(Expression::Negate(Box::new(Expression::Identifier(
+                    "a".to_string(),
+                ))))
+            }
+            Token::Minus => {
+                // tokens.next();
+                //aa
+                Some(Expression::Negate(Box::new(Expression::Identifier(
+                    "a".to_string(),
+                ))))
+            }
             _ => None,
         }
     }
