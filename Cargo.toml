@@ -1,9 +1,16 @@
 [package]
 name = "monkey-rust"
 version = "0.1.0"
+authors = ["Esdras Amora"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.70"
 clap = "4.1.13"
+indextree = "4.6.0"
+smol_str = "0.1.24"
+
+[dev-dependencies]
+pretty_assertions = "1.3.0"
