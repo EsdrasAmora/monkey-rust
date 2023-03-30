@@ -45,7 +45,7 @@ impl Token {
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
         precedence: u8,
     ) -> Result<Expression> {
-        let mut left_expression = self.parse_prefix(tokens).ok_or(anyhow!(
+        let mut left = self.parse_prefix(tokens).ok_or(anyhow!(
             "Cannot parse an expression starting with {:?}",
             self
         ))?;
@@ -55,24 +55,22 @@ impl Token {
             .filter(|x| x != &&Token::Semicolon && precedence < x.precedence())
             .is_some()
         {
-            let infix = tokens
-                .next()
-                .unwrap()
-                .parse_infix(tokens, left_expression)
+            let token = tokens.next().expect("Already peeked");
+            let Some(expression_type) = token.binary_expression_type() else {
+                break;
+            };
+
+            let right = token
+                .parse_infix(tokens)
                 .ok_or(anyhow!("somethign else {:?}", self))?;
 
-            left_expression = infix;
+            left = expression_type(BinaryExpression {
+                lhs: Box::new(left),
+                rhs: Box::new(right),
+            })
         }
-        // for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
-        //     infix := p.infixParseFns[p.peekToken.Type]
-        //     if infix == nil {
-        //     return leftExp
-        //     }
-        //     p.nextToken()
-        //     leftExp = infix(leftExp)
-        // }
 
-        Ok(left_expression)
+        Ok(left)
     }
 
     fn parse_prefix(
@@ -100,11 +98,8 @@ impl Token {
         }
     }
 
-    fn parse_infix(
-        &self,
-        tokens: &mut Peekable<impl Iterator<Item = Token>>,
-        left: Expression,
-    ) -> Option<Expression> {
+    //TODO: why I can't wrap the expressions directly using Some()?
+    fn binary_expression_type(&self) -> Option<fn(BinaryExpression) -> Expression> {
         let expression_type = match self {
             Token::Plus => Expression::Add,
             Token::Minus => Expression::Sub,
@@ -116,15 +111,16 @@ impl Token {
             Token::Gt => Expression::Gt,
             _ => return None,
         };
+        Some(expression_type)
+    }
 
+    fn parse_infix(
+        &self,
+        tokens: &mut Peekable<impl Iterator<Item = Token>>,
+    ) -> Option<Expression> {
         let precedence = self.precedence();
         let next = tokens.next()?;
-        let right = next.parse_expression(tokens, precedence).ok()?;
-
-        Some(expression_type(BinaryExpression {
-            lhs: Box::new(left),
-            rhs: Box::new(right),
-        }))
+        next.parse_expression(tokens, precedence).ok()
     }
 
     #[inline]

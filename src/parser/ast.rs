@@ -34,7 +34,7 @@ pub struct BinaryExpression {
 }
 //maybe precedence should be a method on Token.
 impl Expression {
-    fn boxed(self) -> Box<Self> {
+    pub fn boxed(self) -> Box<Self> {
         Box::new(self)
     }
 }
@@ -83,6 +83,12 @@ pub enum Literal {
     True,
     False,
     Nill,
+}
+
+impl Literal {
+    pub fn into_exp(self) -> Box<Expression> {
+        Expression::Literal(self).boxed()
+    }
 }
 
 impl From<Literal> for Expression {

@@ -76,7 +76,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ast::Expression;
+    use crate::parser::ast::{BinaryExpression, Expression};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -93,7 +93,68 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        assert_eq!(program.nodes, [])
+        // println!("{:?}", program.nodes);
+        assert_eq!(
+            program.nodes,
+            [
+                Statement::Expression(
+                    Expression::Add(BinaryExpression {
+                        lhs: Literal::Int(5).into_exp(),
+                        rhs: Literal::Int(5).into_exp()
+                    })
+                    .boxed()
+                ),
+                Statement::Expression(
+                    Expression::Sub(BinaryExpression {
+                        lhs: Literal::Int(5).into_exp(),
+                        rhs: Literal::Int(5).into_exp()
+                    })
+                    .boxed()
+                ),
+                Statement::Expression(
+                    Expression::Mul(BinaryExpression {
+                        lhs: Literal::Int(5).into_exp(),
+                        rhs: Literal::Int(5).into_exp()
+                    })
+                    .boxed()
+                ),
+                Statement::Expression(
+                    Expression::Div(BinaryExpression {
+                        lhs: Literal::Int(5).into_exp(),
+                        rhs: Literal::Int(5).into_exp()
+                    })
+                    .boxed()
+                ),
+                Statement::Expression(
+                    Expression::Gt(BinaryExpression {
+                        lhs: Literal::Int(5).into_exp(),
+                        rhs: Literal::Int(5).into_exp()
+                    })
+                    .boxed()
+                ),
+                Statement::Expression(
+                    Expression::Lt(BinaryExpression {
+                        lhs: Literal::Int(5).into_exp(),
+                        rhs: Literal::Int(5).into_exp()
+                    })
+                    .boxed()
+                ),
+                Statement::Expression(
+                    Expression::Eq(BinaryExpression {
+                        lhs: Literal::Int(5).into_exp(),
+                        rhs: Literal::Int(5).into_exp()
+                    })
+                    .boxed()
+                ),
+                Statement::Expression(
+                    Expression::NotEq(BinaryExpression {
+                        lhs: Literal::Int(5).into_exp(),
+                        rhs: Literal::Int(5).into_exp()
+                    })
+                    .boxed()
+                )
+            ]
+        )
     }
 
     #[test]
