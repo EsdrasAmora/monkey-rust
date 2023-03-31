@@ -1,0 +1,61 @@
+{
+    "Expression": {
+        "Eq": {
+            "lhs": {
+                "Add": {
+                    "lhs": {
+                        "Literal": {
+                            "Int": 3
+                        }
+                    },
+                    "rhs": {
+                        "Mul": {
+                            "lhs": {
+                                "Literal": {
+                                    "Int": 4
+                                }
+                            },
+                            "rhs": {
+                                "Literal": {
+                                    "Int": 5
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "rhs": {
+                "Add": {
+                    "lhs": {
+                        "Mul": {
+                            "lhs": {
+                                "Literal": {
+                                    "Int": 3
+                                }
+                            },
+                            "rhs": {
+                                "Literal": {
+                                    "Int": 1
+                                }
+                            }
+                        }
+                    },
+                    "rhs": {
+                        "Mul": {
+                            "lhs": {
+                                "Literal": {
+                                    "Int": 4
+                                }
+                            },
+                            "rhs": {
+                                "Literal": {
+                                    "Int": 5
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

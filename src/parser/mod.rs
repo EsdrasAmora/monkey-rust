@@ -73,83 +73,59 @@ impl Parser {
     }
 }
 
+//TODO: not sure if i should keep the expected json's here or in the mocks folder. Maybe I should just use insta (snapshot)?
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ast::{BinaryExpression, Expression};
+    use crate::parser::ast::Expression;
     use assert_json_diff::assert_json_eq;
+    use core::panic;
     use pretty_assertions::assert_eq;
+    use serde_json::from_str;
     use serde_json::json;
     use smol_str::SmolStr;
 
     #[test]
     fn check_parser_precedence() {
-        let input = r#"
-        3 + 4 * 5 == 3 * 1 + 4 * 5;"#;
-        let right = json!( [{
-            "Expression": {
-              "Eq": {
-                "lhs": {
-                  "Add": {
-                    "lhs": {
-                      "Literal": {
-                        "Int": 3
-                      }
-                    },
-                    "rhs": {
-                      "Mul": {
-                        "lhs": {
-                          "Literal": {
-                            "Int": 4
-                          }
-                        },
-                        "rhs": {
-                          "Literal": {
-                            "Int": 5
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "rhs": {
-                  "Add": {
-                    "lhs": {
-                      "Mul": {
-                        "lhs": {
-                          "Literal": {
-                            "Int": 3
-                          }
-                        },
-                        "rhs": {
-                          "Literal": {
-                            "Int": 1
-                          }
-                        }
-                      }
-                    },
-                    "rhs": {
-                      "Mul": {
-                        "lhs": {
-                          "Literal": {
-                            "Int": 4
-                          }
-                        },
-                        "rhs": {
-                          "Literal": {
-                            "Int": 5
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-        }]);
+        let input = r"3 + 4 * 5 == 3 * 1 + 4 * 5;";
+        let right: Statement = from_str(include_str!("../mocks/parser/precedence.json")).unwrap();
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
-        assert_json_eq!(serde_json::to_value(&program.nodes).unwrap(), right);
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        assert_json_eq!(&program.nodes[0], right);
+    }
+
+    #[test]
+    fn check_parser_precedence_2() {
+        let input = r#"
+        -a * b
+        !-a
+        a + b + c
+        a + b - c
+        a * b * c
+        a * b / c
+        a + b / c
+        a + b * c + d / e - f
+        3 + 4; -5 * 5
+        5 > 4 == 3 < 4
+        5 < 4 != 3 > 4
+        3 + 4 * 5 == 3 * 1 + 4 * 5
+        true
+        false
+        3 > 5 == false
+        3 < 5 == true
+        1 + (2 + 3) + 4
+        (5 + 5) * 2
+        2 / (5 + 5)
+        (5 + 5) * 2 * (5 + 5)
+        -(5 + 5)
+        !(true == true)
+        a + add(b * c) + d
+        add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))
+        add(a + b + c * d / f + g);"#;
+        let lexer = Lexer::new(input);
+        // let program = Parser::new(lexer);
+        // println!("{:#?}", program.nodes);
     }
 
     #[test]
@@ -167,67 +143,18 @@ mod tests {
         let program = Parser::new(lexer);
 
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        assert_eq!(
-            program.nodes,
-            [
-                Statement::Expression(
-                    Expression::Add(BinaryExpression {
-                        lhs: Literal::Int(5).into_exp(),
-                        rhs: Literal::Int(5).into_exp()
-                    })
-                    .boxed()
-                ),
-                Statement::Expression(
-                    Expression::Sub(BinaryExpression {
-                        lhs: Literal::Int(5).into_exp(),
-                        rhs: Literal::Int(5).into_exp()
-                    })
-                    .boxed()
-                ),
-                Statement::Expression(
-                    Expression::Mul(BinaryExpression {
-                        lhs: Literal::Int(5).into_exp(),
-                        rhs: Literal::Int(5).into_exp()
-                    })
-                    .boxed()
-                ),
-                Statement::Expression(
-                    Expression::Div(BinaryExpression {
-                        lhs: Literal::Int(5).into_exp(),
-                        rhs: Literal::Int(5).into_exp()
-                    })
-                    .boxed()
-                ),
-                Statement::Expression(
-                    Expression::Gt(BinaryExpression {
-                        lhs: Literal::Int(5).into_exp(),
-                        rhs: Literal::Int(5).into_exp()
-                    })
-                    .boxed()
-                ),
-                Statement::Expression(
-                    Expression::Lt(BinaryExpression {
-                        lhs: Literal::Int(5).into_exp(),
-                        rhs: Literal::Int(5).into_exp()
-                    })
-                    .boxed()
-                ),
-                Statement::Expression(
-                    Expression::Eq(BinaryExpression {
-                        lhs: Literal::Int(5).into_exp(),
-                        rhs: Literal::Int(5).into_exp()
-                    })
-                    .boxed()
-                ),
-                Statement::Expression(
-                    Expression::NotEq(BinaryExpression {
-                        lhs: Literal::Int(5).into_exp(),
-                        rhs: Literal::Int(5).into_exp()
-                    })
-                    .boxed()
-                )
-            ]
-        )
+
+        let right = json!([
+            {"Expression": {"Add":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
+            {"Expression":{"Sub":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
+            {"Expression":{"Mul":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
+            {"Expression":{"Div":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
+            {"Expression":{"Gt":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
+            {"Expression":{"Lt":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
+            {"Expression":{"Eq":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
+            {"Expression":{"NotEq":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}}
+        ]);
+        assert_eq!(serde_json::to_value(&program.nodes).unwrap(), right)
     }
 
     #[test]

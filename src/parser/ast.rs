@@ -1,7 +1,7 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Statement {
     Let {
         identifier: SmolStr,
@@ -11,7 +11,7 @@ pub enum Statement {
     Expression(Box<Expression>),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Expression {
     Literal(Literal),
     Identifier(SmolStr),
@@ -29,7 +29,7 @@ pub enum Expression {
 
 type UnaryExpression = Box<Expression>;
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BinaryExpression {
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
@@ -41,7 +41,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Literal {
     Int(i64),
     String(SmolStr),
