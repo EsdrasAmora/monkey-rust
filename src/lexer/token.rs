@@ -1,7 +1,7 @@
-use std::iter::Peekable;
+use std::{iter::Peekable, vec};
 
-use crate::parser::ast::{BinaryExpression, Expression, Literal};
-use anyhow::{anyhow, Result};
+use crate::parser::ast::{BinaryExpression, Expression, IfExpression, Literal};
+use anyhow::{anyhow, ensure, Result};
 use smol_str::SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,8 +95,59 @@ impl Token {
                     .parse_expression(tokens, 6)?;
                 Ok(Expression::Oposite(Box::new(right)))
             }
-            Token::LParen => todo!(),
-            Token::If => todo!(),
+            Token::LParen => {
+                let expression = tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .parse_expression(tokens, 0)?;
+
+                ensure!(
+                    tokens.next_if_eq(&Token::RParen).is_some(),
+                    "Missing closing parenthesis. Found {:?}",
+                    tokens.peek()
+                );
+
+                Ok(expression)
+            }
+            Token::If => {
+                ensure!(
+                    tokens.next_if_eq(&Token::LParen).is_some(),
+                    "Missing opening parem. Found {:?}",
+                    tokens.peek()
+                );
+
+                let condition = tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .parse_expression(tokens, 0);
+
+                ensure!(
+                    tokens.next_if_eq(&Token::RParen).is_some(),
+                    "Missing closing parem. Found {:?}",
+                    tokens.peek()
+                );
+
+                ensure!(
+                    tokens.next_if_eq(&Token::LBrace).is_some(),
+                    "Missing opening brace. Found {:?}",
+                    tokens.peek()
+                );
+
+                //actually its an array of statements
+                let _consequence = tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .parse_expression(tokens, 0)?;
+
+                //todo: parse alternative;
+                let alternative = vec![];
+
+                Ok(Expression::If(IfExpression {
+                    condition: Box::new(condition?),
+                    consequence: vec![],
+                    alternative,
+                }))
+            }
             Token::Function => todo!(),
             _ => Err(anyhow!("Cannot parse expression starting with {:?}", self)),
         }

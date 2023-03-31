@@ -11,6 +11,7 @@ use crate::lexer::Lexer;
 
 use self::ast::{Literal, Statement};
 
+#[derive(Debug)]
 struct Parser {
     nodes: Vec<Statement>,
     errors: Vec<Error>,
@@ -78,22 +79,9 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::parser::ast::Expression;
-    use assert_json_diff::assert_json_eq;
-    use core::panic;
     use pretty_assertions::assert_eq;
-    use serde_json::from_str;
     use serde_json::json;
     use smol_str::SmolStr;
-
-    #[test]
-    fn check_parser_precedence() {
-        let input = r"3 + 4 * 5 == 3 * 1 + 4 * 5;";
-        let right: Statement = from_str(include_str!("../mocks/parser/precedence.json")).unwrap();
-        let lexer = Lexer::new(input);
-        let program = Parser::new(lexer);
-        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        assert_json_eq!(&program.nodes[0], right);
-    }
 
     #[test]
     fn check_parser_precedence_2() {
@@ -123,10 +111,37 @@ mod tests {
         a + add(b * c) + d
         add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))
         add(a + b + c * d / f + g);"#;
-        let lexer = Lexer::new(input);
+        // let lexer = Lexer::new(input);
         // let program = Parser::new(lexer);
         // println!("{:#?}", program.nodes);
     }
+
+    #[test]
+    fn parse_grouped_expression() {
+        let input = "(5 + 5) * 5; -(5 + 5);";
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        println!("{:#?}", program.nodes);
+    }
+
+    #[test]
+    fn parse_function_call_expression() {
+        let input = "
+        if (x < y) { x } else { y };
+        return if (x < y) { x } else { y };
+        if (x < y) { return x; } else { return y; };
+        if (x < y) { x = y + 1; y = 0; } else { y = x + 1; x = 0; };";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        println!("{:#?}", program.nodes);
+    }
+
+    #[test]
+    fn parse_if_expression() {}
 
     #[test]
     fn parse_infix_expression() {

@@ -25,9 +25,17 @@ pub enum Expression {
     Sub(BinaryExpression),
     Mul(BinaryExpression),
     Div(BinaryExpression),
+    If(IfExpression),
 }
 
 type UnaryExpression = Box<Expression>;
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub consequence: Vec<Statement>,
+    pub alternative: Vec<Statement>,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BinaryExpression {
