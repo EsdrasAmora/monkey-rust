@@ -2,14 +2,15 @@ use std::iter::Peekable;
 
 use crate::parser::ast::{BinaryExpression, Expression, Literal};
 use anyhow::{anyhow, Result};
+use smol_str::SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Illegal,
-    Identifier(String),
+    Identifier(SmolStr),
     //Literals
     Int(i64),
-    String(String),
+    String(SmolStr), // a Cow may would be better here.
     True,
     False,
     Nil,
@@ -78,6 +79,7 @@ impl Token {
             Token::Int(value) => Ok(Expression::Literal(Literal::Int(*value))),
             Token::True => Ok(Literal::True.into()),
             Token::False => Ok(Literal::False.into()),
+            Token::String(value) => Ok(Expression::Literal(Literal::String(value.clone()))),
             Token::Nil => Ok(Literal::Nil.into()),
             Token::Bang => {
                 let right = tokens
@@ -141,7 +143,7 @@ impl Token {
     }
 
     #[inline]
-    pub fn into_identifier(self) -> Option<String> {
+    pub fn into_identifier(self) -> Option<SmolStr> {
         match self {
             Token::Identifier(name) => Some(name),
             _ => None,

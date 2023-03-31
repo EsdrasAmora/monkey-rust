@@ -1,9 +1,10 @@
 use serde::Serialize;
+use smol_str::SmolStr;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Statement {
     Let {
-        identifier: String,
+        identifier: SmolStr,
         value: Box<Expression>,
     },
     Return(Box<Expression>),
@@ -13,7 +14,7 @@ pub enum Statement {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expression {
     Literal(Literal),
-    Identifier(String),
+    Identifier(SmolStr),
     Oposite(UnaryExpression),
     Not(UnaryExpression),
     Eq(BinaryExpression),
@@ -43,7 +44,7 @@ impl Expression {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Literal {
     Int(i64),
-    String(String),
+    String(SmolStr),
     True,
     False,
     Nil,

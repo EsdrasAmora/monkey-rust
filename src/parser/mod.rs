@@ -3,6 +3,7 @@ pub(crate) mod ast;
 use std::iter::Peekable;
 
 use anyhow::{anyhow, ensure, Error, Result};
+use smol_str::SmolStr;
 
 //TODO: how to rexport this?
 use crate::lexer::token::Token;
@@ -42,7 +43,7 @@ impl Parser {
                     .and_then(Token::into_identifier)
                     .ok_or(anyhow!(
                         "Expected token to be {:?}, but got {:?} instead",
-                        Token::Identifier("foo".to_owned()),
+                        Token::Identifier(SmolStr::default()),
                         tokens.peek(),
                     ))?;
 
@@ -79,6 +80,7 @@ mod tests {
     use assert_json_diff::assert_json_eq;
     use pretty_assertions::assert_eq;
     use serde_json::json;
+    use smol_str::SmolStr;
 
     #[test]
     fn check_parser_precedence() {
@@ -260,7 +262,7 @@ mod tests {
         assert_eq!(
             program.nodes,
             [Statement::Expression(Box::new(Expression::Identifier(
-                "foobar".to_string()
+                SmolStr::new("foobar")
             )))]
         )
     }
@@ -290,15 +292,15 @@ mod tests {
             program.nodes,
             [
                 Statement::Let {
-                    identifier: "x".to_string(),
+                    identifier: SmolStr::new("x"),
                     value: Box::new(Literal::Int(5).into())
                 },
                 Statement::Let {
-                    identifier: "y".to_string(),
+                    identifier: SmolStr::new("y"),
                     value: Box::new(Literal::Int(5).into())
                 },
                 Statement::Let {
-                    identifier: "foobar".to_string(),
+                    identifier: SmolStr::new("foobar"),
                     value: Box::new(Literal::Int(5).into())
                 }
             ]
