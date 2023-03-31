@@ -45,10 +45,7 @@ impl Token {
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
         precedence: u8,
     ) -> Result<Expression> {
-        let mut left = self.parse_prefix(tokens).ok_or(anyhow!(
-            "Cannot parse an expression starting with {:?}",
-            self
-        ))?;
+        let mut left = self.parse_prefix(tokens)?;
 
         while tokens
             .peek()
@@ -56,13 +53,12 @@ impl Token {
             .is_some()
         {
             let token = tokens.next().expect("Already peeked");
+            //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
             let Some(expression_type) = token.binary_expression_type() else {
                 break;
             };
 
-            let right = token
-                .parse_infix(tokens)
-                .ok_or(anyhow!("somethign else {:?}", self))?;
+            let right = token.parse_infix(tokens)?;
 
             left = expression_type(BinaryExpression {
                 lhs: Box::new(left),
@@ -76,25 +72,30 @@ impl Token {
     fn parse_prefix(
         &self,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
-    ) -> Option<Expression> {
+    ) -> Result<Expression> {
         match self {
-            Token::Identifier(name) => Some(Expression::Identifier(name.clone())),
-            Token::Int(value) => Some(Expression::Literal(Literal::Int(*value))),
-            Token::True => Some(Literal::True.into()),
-            Token::False => Some(Literal::False.into()),
+            Token::Identifier(name) => Ok(Expression::Identifier(name.clone())),
+            Token::Int(value) => Ok(Expression::Literal(Literal::Int(*value))),
+            Token::True => Ok(Literal::True.into()),
+            Token::False => Ok(Literal::False.into()),
             Token::Bang => {
-                //TODO: fix error propagation;
-                let right = tokens.next()?.parse_expression(tokens, 6).ok()?;
-                Some(Expression::Not(Box::new(right)))
+                let right = tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .parse_expression(tokens, 6)?;
+                Ok(Expression::Not(Box::new(right)))
             }
             Token::Minus => {
-                let right = tokens.next()?.parse_expression(tokens, 6).ok()?;
-                Some(Expression::Oposite(Box::new(right)))
+                let right = tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .parse_expression(tokens, 6)?;
+                Ok(Expression::Oposite(Box::new(right)))
             }
             Token::LParen => todo!(),
             Token::If => todo!(),
             Token::Function => todo!(),
-            _ => None,
+            _ => Err(anyhow!("Cannot parse expression starting with {:?}", self)),
         }
     }
 
@@ -117,10 +118,10 @@ impl Token {
     fn parse_infix(
         &self,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
-    ) -> Option<Expression> {
+    ) -> Result<Expression> {
         let precedence = self.precedence();
-        let next = tokens.next()?;
-        next.parse_expression(tokens, precedence).ok()
+        let next = tokens.next().ok_or(anyhow!("any"))?;
+        next.parse_expression(tokens, precedence)
     }
 
     #[inline]
