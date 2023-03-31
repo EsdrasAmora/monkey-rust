@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Eq, PartialEq)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Statement {
     Let {
         identifier: String,
@@ -8,8 +10,7 @@ pub enum Statement {
     Expression(Box<Expression>),
 }
 
-//TODO: create a builder for this.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expression {
     Literal(Literal),
     Identifier(String),
@@ -27,56 +28,19 @@ pub enum Expression {
 
 type UnaryExpression = Box<Expression>;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct BinaryExpression {
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
 }
-//maybe precedence should be a method on Token.
+
 impl Expression {
     pub fn boxed(self) -> Box<Self> {
         Box::new(self)
     }
 }
 
-// impl TryFrom<Token> for Expression {
-//     type Error = anyhow::Error;
-
-//     fn from(value: Token) -> Result<Expression, Self::Error> {
-//         match value {
-//             Token::Identifier(name) => Expression::Identifier(name.clone()),
-//             Token::Int(value) => Expression::Literal(Literal::Int(value)),
-//             Token::True => Literal::True.into(),
-//             Token::False => Literal::False.into(),
-//             Token::Nill => Literal::Nill.into(),
-//             Token::String(value) => Expression::Literal(Literal::String(value)),
-//             // Token::Illegal => todo!(),
-//             // Token::Eq => todo!(),
-//             // Token::NotEq => todo!(),
-//             // Token::Assign => todo!(),
-//             // Token::Plus => todo!(),
-//             // Token::Minus => todo!(),
-//             // Token::Bang => todo!(),
-//             // Token::Asterisk => todo!(),
-//             // Token::Slash => todo!(),
-//             // Token::Lt => todo!(),
-//             // Token::Gt => todo!(),
-//             // Token::Comma => todo!(),
-//             // Token::Semicolon => todo!(),
-//             // Token::LParen => todo!(),
-//             // Token::RParen => todo!(),
-//             // Token::LBrace => todo!(),
-//             // Token::RBrace => todo!(),
-//             // Token::Function => todo!(),
-//             // Token::Let => todo!(),
-//             // Token::If => todo!(),
-//             // Token::Else => todo!(),
-//             // Token::Return => todo!(),
-//         }
-//     }
-// }
-
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Literal {
     Int(i64),
     String(String),

@@ -36,7 +36,6 @@ impl Parser {
     ) -> Result<Statement> {
         match current {
             Token::Let => {
-                //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
                 //find a way to peak them consume the iterator;
                 let name = tokens
                     .next_if(Token::is_identifier)
@@ -77,7 +76,79 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::parser::ast::{BinaryExpression, Expression};
+    use assert_json_diff::assert_json_eq;
     use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    #[test]
+    fn check_parser_precedence() {
+        let input = r#"
+        3 + 4 * 5 == 3 * 1 + 4 * 5;"#;
+        let right = json!( [{
+            "Expression": {
+              "Eq": {
+                "lhs": {
+                  "Add": {
+                    "lhs": {
+                      "Literal": {
+                        "Int": 3
+                      }
+                    },
+                    "rhs": {
+                      "Mul": {
+                        "lhs": {
+                          "Literal": {
+                            "Int": 4
+                          }
+                        },
+                        "rhs": {
+                          "Literal": {
+                            "Int": 5
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "rhs": {
+                  "Add": {
+                    "lhs": {
+                      "Mul": {
+                        "lhs": {
+                          "Literal": {
+                            "Int": 3
+                          }
+                        },
+                        "rhs": {
+                          "Literal": {
+                            "Int": 1
+                          }
+                        }
+                      }
+                    },
+                    "rhs": {
+                      "Mul": {
+                        "lhs": {
+                          "Literal": {
+                            "Int": 4
+                          }
+                        },
+                        "rhs": {
+                          "Literal": {
+                            "Int": 5
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        }]);
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+        assert_json_eq!(serde_json::to_value(&program.nodes).unwrap(), right);
+    }
 
     #[test]
     fn parse_infix_expression() {
@@ -92,8 +163,8 @@ mod tests {
         5 != 5;";
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
+
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        // println!("{:?}", program.nodes);
         assert_eq!(
             program.nodes,
             [
