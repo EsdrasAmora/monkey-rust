@@ -1,15 +1,8 @@
 pub(crate) mod ast;
 
-use std::iter::Peekable;
-
-use anyhow::{anyhow, ensure, Error, Result};
-use smol_str::SmolStr;
-
-//TODO: how to rexport this?
-use crate::lexer::token::Token;
+use self::ast::Statement;
 use crate::lexer::Lexer;
-
-use self::ast::{Literal, Statement};
+use anyhow::Error;
 
 #[derive(Debug)]
 struct Parser {
@@ -24,53 +17,12 @@ impl Parser {
         let mut tokens = lexer.tokens.into_iter().peekable();
 
         while let Some(current) = tokens.next() {
-            Self::new_helper(current, &mut tokens)
+            current
+                .parse_statement(&mut tokens)
                 .map_or_else(|err| errors.push(err), |val| nodes.push(val))
         }
 
         Parser { nodes, errors }
-    }
-
-    //maybe use https://docs.rs/enum-as-inner/0.5.1/enum_as_inner/
-    fn new_helper(
-        current: Token,
-        tokens: &mut Peekable<impl Iterator<Item = Token>>,
-    ) -> Result<Statement> {
-        match current {
-            Token::Let => {
-                //find a way to peak them consume the iterator;
-                let name = tokens
-                    .next_if(Token::is_identifier)
-                    .and_then(Token::into_identifier)
-                    .ok_or(anyhow!(
-                        "Expected token to be {:?}, but got {:?} instead",
-                        Token::Identifier(SmolStr::default()),
-                        tokens.peek(),
-                    ))?;
-
-                ensure!(
-                    tokens.next_if_eq(&Token::Assign).is_some(),
-                    "Expected assign after identifier found: {:?}",
-                    tokens.peek()
-                );
-
-                while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
-
-                Ok(Statement::Let {
-                    identifier: name,
-                    value: Box::new(Literal::Int(5).into()),
-                })
-            }
-            Token::Return => {
-                while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
-                Ok(Statement::Return(Box::new(Literal::Int(-1).into())))
-            }
-            _ => {
-                let expression = current.parse_expression(tokens, 1)?;
-                tokens.next_if_eq(&Token::Semicolon);
-                Ok(Statement::Expression(Box::new(expression)))
-            }
-        }
     }
 }
 
@@ -78,7 +30,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ast::Expression;
+    use crate::parser::ast::{Expression, Literal};
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use smol_str::SmolStr;
@@ -127,10 +79,18 @@ mod tests {
     }
 
     #[test]
-    fn parse_function_call_expression() {
+    fn parse_if_expression() {
+        let input = "if (x < y) { return x; };";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        println!("{:#?}", program.nodes);
+    }
+    #[test]
+    fn parse_if_else_expression() {
         let input = "
         if (x < y) { x } else { y };
-        return if (x < y) { x } else { y };
         if (x < y) { return x; } else { return y; };
         if (x < y) { x = y + 1; y = 0; } else { y = x + 1; x = 0; };";
 
@@ -141,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_if_expression() {}
+    fn parse_function_call_expression() {}
 
     #[test]
     fn parse_infix_expression() {

@@ -1,6 +1,6 @@
 use std::{iter::Peekable, vec};
 
-use crate::parser::ast::{BinaryExpression, Expression, IfExpression, Literal};
+use crate::parser::ast::{BinaryExpression, Expression, IfExpression, Literal, Statement};
 use anyhow::{anyhow, ensure, Result};
 use smol_str::SmolStr;
 
@@ -41,6 +41,47 @@ pub enum Token {
 }
 
 impl Token {
+    pub fn parse_statement(
+        self: Token,
+        tokens: &mut Peekable<impl Iterator<Item = Token>>,
+    ) -> Result<Statement> {
+        match self {
+            Token::Let => {
+                //find a way to peak them consume the iterator;
+                let name = tokens
+                    .next_if(Token::is_identifier)
+                    .and_then(Token::into_identifier)
+                    .ok_or(anyhow!(
+                        "Expected token to be {:?}, but got {:?} instead",
+                        Token::Identifier(SmolStr::default()),
+                        tokens.peek(),
+                    ))?;
+
+                ensure!(
+                    tokens.next_if_eq(&Token::Assign).is_some(),
+                    "Expected assign after identifier found: {:?}",
+                    tokens.peek()
+                );
+
+                while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
+
+                Ok(Statement::Let {
+                    identifier: name,
+                    value: Box::new(Literal::Int(5).into()),
+                })
+            }
+            Token::Return => {
+                while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
+                Ok(Statement::Return(Box::new(Literal::Int(-1).into())))
+            }
+            _ => {
+                let expression = self.parse_expression(tokens, 1)?;
+                tokens.next_if_eq(&Token::Semicolon);
+                Ok(Statement::Expression(Box::new(expression)))
+            }
+        }
+    }
+
     pub fn parse_expression(
         self,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
@@ -119,32 +160,28 @@ impl Token {
                 let condition = tokens
                     .next()
                     .ok_or(anyhow!("Missing next token"))?
-                    .parse_expression(tokens, 0);
+                    .parse_expression(tokens, 0)?;
 
                 ensure!(
                     tokens.next_if_eq(&Token::RParen).is_some(),
                     "Missing closing parem. Found {:?}",
                     tokens.peek()
                 );
-
                 ensure!(
                     tokens.next_if_eq(&Token::LBrace).is_some(),
                     "Missing opening brace. Found {:?}",
                     tokens.peek()
                 );
 
-                //actually its an array of statements
-                let _consequence = tokens
-                    .next()
-                    .ok_or(anyhow!("Missing next token"))?
-                    .parse_expression(tokens, 0)?;
-
-                //todo: parse alternative;
-                let alternative = vec![];
+                let consequence = Token::parse_block(tokens)?;
+                //TODO: handle else block errors
+                let alternative = tokens
+                    .next_if_eq(&Token::LBrace)
+                    .and(Token::parse_block(tokens).ok());
 
                 Ok(Expression::If(IfExpression {
-                    condition: Box::new(condition?),
-                    consequence: vec![],
+                    condition: Box::new(condition),
+                    consequence,
                     alternative,
                 }))
             }
@@ -153,7 +190,27 @@ impl Token {
         }
     }
 
-    //TODO: why I can't wrap the expressions directly using Some()?
+    fn parse_block(tokens: &mut Peekable<impl Iterator<Item = Token>>) -> Result<Vec<Statement>> {
+        let mut statements = vec![];
+
+        while tokens.peek().filter(|x| x != &&Token::RBrace).is_some() {
+            let statement = tokens
+                .next()
+                .ok_or(anyhow!("Missing next token"))?
+                .parse_statement(tokens)?;
+            statements.push(statement);
+        }
+
+        ensure!(
+            tokens.next_if_eq(&Token::RBrace).is_some(),
+            "Missing closing brace. Found {:?}",
+            tokens.peek()
+        );
+
+        Ok(statements)
+    }
+
+    //TODO: find why I can't wrap the expressions directly using Some()?
     fn binary_expression_type(&self) -> Option<fn(BinaryExpression) -> Expression> {
         let expression_type = match self {
             Token::Plus => Expression::Add,
