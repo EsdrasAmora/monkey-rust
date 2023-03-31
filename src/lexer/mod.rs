@@ -78,6 +78,7 @@ impl Lexer {
                     "if" => Token::If,
                     "else" => Token::Else,
                     "return" => Token::Return,
+                    "nil" => Token::Nil,
                     _ => Token::Identifier(temp.clone()),
                 };
 

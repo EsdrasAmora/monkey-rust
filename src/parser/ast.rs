@@ -46,7 +46,7 @@ pub enum Literal {
     String(String),
     True,
     False,
-    Nill,
+    Nil,
 }
 
 impl Literal {

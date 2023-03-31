@@ -12,7 +12,7 @@ pub enum Token {
     String(String),
     True,
     False,
-    Nill,
+    Nil,
     //Operators
     Eq,
     NotEq,
@@ -78,6 +78,7 @@ impl Token {
             Token::Int(value) => Ok(Expression::Literal(Literal::Int(*value))),
             Token::True => Ok(Literal::True.into()),
             Token::False => Ok(Literal::False.into()),
+            Token::Nil => Ok(Literal::Nil.into()),
             Token::Bang => {
                 let right = tokens
                     .next()
