@@ -172,12 +172,16 @@ impl Token {
                     "Missing opening brace. Found {:?}",
                     tokens.peek()
                 );
-
                 let consequence = Token::parse_block(tokens)?;
-                //TODO: handle else block errors
-                let alternative = tokens
-                    .next_if_eq(&Token::LBrace)
-                    .and(Token::parse_block(tokens).ok());
+                let alternative = tokens.next_if_eq(&Token::Else).and({
+                    //TODO: Not sure if I should return errors here
+                    ensure!(
+                        tokens.next_if_eq(&Token::LBrace).is_some(),
+                        "Missing opening brace. Found {:?}",
+                        tokens.peek()
+                    );
+                    Some(Token::parse_block(tokens)?)
+                });
 
                 Ok(Expression::If(IfExpression {
                     condition: Box::new(condition),
