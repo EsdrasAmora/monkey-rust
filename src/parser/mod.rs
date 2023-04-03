@@ -37,39 +37,6 @@ mod tests {
     use smol_str::SmolStr;
 
     #[test]
-    fn check_parser_precedence_2() {
-        let input = r#"
-        -a * b
-        !-a
-        a + b + c
-        a + b - c
-        a * b * c
-        a * b / c
-        a + b / c
-        a + b * c + d / e - f
-        3 + 4; -5 * 5
-        5 > 4 == 3 < 4
-        5 < 4 != 3 > 4
-        3 + 4 * 5 == 3 * 1 + 4 * 5
-        true
-        false
-        3 > 5 == false
-        3 < 5 == true
-        1 + (2 + 3) + 4
-        (5 + 5) * 2
-        2 / (5 + 5)
-        (5 + 5) * 2 * (5 + 5)
-        -(5 + 5)
-        !(true == true)
-        a + add(b * c) + d
-        add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))
-        add(a + b + c * d / f + g);"#;
-        // let lexer = Lexer::new(input);
-        // let program = Parser::new(lexer);
-        // println!("{:#?}", program.nodes);
-    }
-
-    #[test]
     fn parse_grouped_expression() {
         let input = "(5 + 5) * 5; -(5 + 5);";
         let lexer = Lexer::new(input);
@@ -91,7 +58,7 @@ mod tests {
     #[test]
     fn parse_if_else_expression() {
         let input = "
-        if (x < y) { x } else { y };
+        if (x < y) { x; } else { y; };
         if (x < y) { return x; } else { return y; };
         if (x < y) { x == 3; } else { x != 1; };";
 
@@ -137,7 +104,7 @@ mod tests {
     fn parse_prefix_expression() {
         let input = "
         -1;
-        !5
+        !5;
         !!-2;";
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
@@ -196,15 +163,15 @@ mod tests {
             [
                 Statement::Let {
                     identifier: SmolStr::new("x"),
-                    value: Box::new(Literal::Int(5).into())
+                    value: Box::new(Literal::False.into())
                 },
                 Statement::Let {
                     identifier: SmolStr::new("y"),
-                    value: Box::new(Literal::Int(5).into())
+                    value: Box::new(Literal::Int(10).into())
                 },
                 Statement::Let {
                     identifier: SmolStr::new("foobar"),
-                    value: Box::new(Literal::Int(5).into())
+                    value: Box::new(Literal::True.into())
                 }
             ]
         )
@@ -222,10 +189,43 @@ mod tests {
         assert_eq!(
             program.nodes,
             [
-                Statement::Return(Box::new(Literal::Int(-1).into())),
-                Statement::Return(Box::new(Literal::Int(-1).into())),
-                Statement::Return(Box::new(Literal::Int(-1).into()))
+                Statement::Return(Box::new(Literal::Int(5).into())),
+                Statement::Return(Box::new(Literal::Int(10).into())),
+                Statement::Return(Box::new(Literal::Int(993322).into()))
             ]
         )
+    }
+
+    #[test]
+    fn check_parser_precedence_2() {
+        let input = r#"
+        -a * b
+        !-a
+        a + b + c
+        a + b - c
+        a * b * c
+        a * b / c
+        a + b / c
+        a + b * c + d / e - f
+        3 + 4; -5 * 5
+        5 > 4 == 3 < 4
+        5 < 4 != 3 > 4
+        3 + 4 * 5 == 3 * 1 + 4 * 5
+        true
+        false
+        3 > 5 == false
+        3 < 5 == true
+        1 + (2 + 3) + 4
+        (5 + 5) * 2
+        2 / (5 + 5)
+        (5 + 5) * 2 * (5 + 5)
+        -(5 + 5)
+        !(true == true)
+        a + add(b * c) + d
+        add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))
+        add(a + b + c * d / f + g);"#;
+        // let lexer = Lexer::new(input);
+        // let program = Parser::new(lexer);
+        // println!("{:#?}", program.nodes);
     }
 }

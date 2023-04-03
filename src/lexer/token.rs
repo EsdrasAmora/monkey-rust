@@ -62,21 +62,39 @@ impl Token {
                     "Expected assign after identifier found: {:?}",
                     tokens.peek()
                 );
-
-                while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
-
+                let expression = tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .parse_expression(tokens, 1)?;
+                ensure!(
+                    tokens.next_if_eq(&Token::Semicolon).is_some(),
+                    "Expected semicolumn at the end of statement but found: {:?}",
+                    tokens.peek()
+                );
                 Ok(Statement::Let {
                     identifier: name,
-                    value: Box::new(Literal::Int(5).into()),
+                    value: Box::new(expression),
                 })
             }
             Token::Return => {
-                while tokens.next().filter(|x| x != &Token::Semicolon).is_some() {}
-                Ok(Statement::Return(Box::new(Literal::Int(-1).into())))
+                let expression = tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .parse_expression(tokens, 1)?;
+                ensure!(
+                    tokens.next_if_eq(&Token::Semicolon).is_some(),
+                    "Expected semicolumn at the end of statement but found: {:?}",
+                    tokens.peek()
+                );
+                Ok(Statement::Return(Box::new(expression)))
             }
             _ => {
                 let expression = self.parse_expression(tokens, 1)?;
-                tokens.next_if_eq(&Token::Semicolon);
+                ensure!(
+                    tokens.next_if_eq(&Token::Semicolon).is_some(),
+                    "Expected semicolumn at the end of statement but found: {:?}",
+                    tokens.peek()
+                );
                 Ok(Statement::Expression(Box::new(expression)))
             }
         }
@@ -102,10 +120,11 @@ impl Token {
 
             let right = token.parse_infix(tokens)?;
 
+            //TODO: how can I assign left at the same time it is being moved?
             left = expression_type(BinaryExpression {
                 lhs: Box::new(left),
                 rhs: Box::new(right),
-            })
+            });
         }
 
         Ok(left)
@@ -173,16 +192,22 @@ impl Token {
                     tokens.peek()
                 );
                 let consequence = Token::parse_block(tokens)?;
-                let alternative = tokens.next_if_eq(&Token::Else).and({
-                    //TODO: Not sure if I should return errors here
-                    ensure!(
-                        tokens.next_if_eq(&Token::LBrace).is_some(),
-                        "Missing opening brace. Found {:?}",
-                        tokens.peek()
-                    );
-                    Some(Token::parse_block(tokens)?)
-                });
 
+                if tokens.next_if_eq(&Token::Else).is_none() {
+                    return Ok(Expression::If(IfExpression {
+                        condition: Box::new(condition),
+                        consequence,
+                        alternative: None,
+                    }));
+                }
+
+                //TODO: Not sure if I should return errors here
+                ensure!(
+                    tokens.next_if_eq(&Token::LBrace).is_some(),
+                    "Missing opening brace. Found {:?}",
+                    tokens.peek()
+                );
+                let alternative = Some(Token::parse_block(tokens)?);
                 Ok(Expression::If(IfExpression {
                     condition: Box::new(condition),
                     consequence,
@@ -215,6 +240,7 @@ impl Token {
     }
 
     //TODO: find why I can't wrap the expressions directly using Some()?
+    #[inline]
     fn binary_expression_type(&self) -> Option<fn(BinaryExpression) -> Expression> {
         let expression_type = match self {
             Token::Plus => Expression::Add,
@@ -230,6 +256,7 @@ impl Token {
         Some(expression_type)
     }
 
+    #[inline]
     fn parse_infix(
         &self,
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
