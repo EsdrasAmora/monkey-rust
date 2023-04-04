@@ -1,6 +1,8 @@
 use std::{iter::Peekable, vec};
 
-use crate::parser::ast::{BinaryExpression, Expression, IfExpression, Literal, Statement};
+use crate::parser::ast::{
+    BinaryExpression, Expression, FunctionExpression, IfExpression, Literal, Statement,
+};
 use anyhow::{anyhow, ensure, Result};
 use smol_str::SmolStr;
 
@@ -214,9 +216,65 @@ impl Token {
                     alternative,
                 }))
             }
-            Token::Function => todo!(),
+            Token::Function => {
+                ensure!(
+                    tokens.next_if_eq(&Token::LParen).is_some(),
+                    "Missing opening parem. Found {:?}",
+                    tokens.peek()
+                );
+
+                let parameters = tokens
+                    .next_if_eq(&Token::RParen)
+                    .map_or_else(|| Token::parse_function_parameters(tokens).ok(), |_| None);
+                //TODO: handle parse_function_parameters error
+
+                ensure!(
+                    tokens.next_if_eq(&Token::LBrace).is_some(),
+                    "Missing opening brace. Found {:?}",
+                    tokens.peek()
+                );
+
+                let body = Token::parse_block(tokens)?;
+                Ok(Expression::Function(FunctionExpression {
+                    parameters,
+                    body,
+                }))
+            }
             _ => Err(anyhow!("Cannot parse expression starting with {:?}", self)),
         }
+    }
+
+    fn parse_function_parameters(
+        tokens: &mut Peekable<impl Iterator<Item = Token>>,
+    ) -> Result<Vec<SmolStr>> {
+        //all identifiers, create own struct
+        let mut parameters = vec![];
+
+        parameters.push(
+            tokens
+                .next()
+                .ok_or(anyhow!("Missing next token"))?
+                .try_into_identifier()
+                .map_err(|token| anyhow!("Expected identifier but found: {:?}", token))?,
+        );
+
+        while tokens.next_if_eq(&Token::Comma).is_some() {
+            parameters.push(
+                tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .try_into_identifier()
+                    .map_err(|token| anyhow!("Expected identifier but found: {:?}", token))?,
+            );
+        }
+
+        ensure!(
+            tokens.next_if_eq(&Token::RParen).is_some(),
+            "Missing closing parenthesis. Found {:?}",
+            tokens.peek()
+        );
+
+        Ok(parameters)
     }
 
     fn parse_block(tokens: &mut Peekable<impl Iterator<Item = Token>>) -> Result<Vec<Statement>> {
@@ -278,6 +336,14 @@ impl Token {
                 println!("No precedence for {:?}", self);
                 0
             }
+        }
+    }
+
+    #[inline]
+    pub fn try_into_identifier(self) -> Result<SmolStr, Self> {
+        match self {
+            Token::Identifier(name) => Ok(name),
+            _ => Err(self),
         }
     }
 

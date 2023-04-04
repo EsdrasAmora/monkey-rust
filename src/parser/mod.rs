@@ -37,6 +37,19 @@ mod tests {
     use smol_str::SmolStr;
 
     #[test]
+    fn parse_fn_expression() {
+        let input = "
+        fn() {};
+        fn(x) { x; };
+        fn(x, y, z) { return x + y + z; };";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        println!("{:#?}", program.nodes);
+    }
+
+    #[test]
     fn parse_grouped_expression() {
         let input = "(5 + 5) * 5; -(5 + 5);";
         let lexer = Lexer::new(input);
@@ -55,6 +68,7 @@ mod tests {
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
         println!("{:#?}", program.nodes);
     }
+
     #[test]
     fn parse_if_else_expression() {
         let input = "
