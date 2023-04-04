@@ -1,9 +1,11 @@
 use std::{iter::Peekable, vec};
 
 use crate::parser::ast::{
-    BinaryExpression, Expression, FunctionExpression, IfExpression, Literal, Statement,
+    BinaryExpression, CallExpression, Expression, FunctionExpression, IfExpression, Literal,
+    Statement,
 };
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
+use either::Either::{Left, Right};
 use smol_str::SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,7 +69,7 @@ impl Token {
                 let expression = tokens
                     .next()
                     .ok_or(anyhow!("Missing next token"))?
-                    .parse_expression(tokens, 1)?;
+                    .parse_expression(tokens, 0)?;
                 ensure!(
                     tokens.next_if_eq(&Token::Semicolon).is_some(),
                     "Expected semicolumn at the end of statement but found: {:?}",
@@ -82,7 +84,7 @@ impl Token {
                 let expression = tokens
                     .next()
                     .ok_or(anyhow!("Missing next token"))?
-                    .parse_expression(tokens, 1)?;
+                    .parse_expression(tokens, 0)?;
                 ensure!(
                     tokens.next_if_eq(&Token::Semicolon).is_some(),
                     "Expected semicolumn at the end of statement but found: {:?}",
@@ -91,7 +93,7 @@ impl Token {
                 Ok(Statement::Return(Box::new(expression)))
             }
             _ => {
-                let expression = self.parse_expression(tokens, 1)?;
+                let expression = self.parse_expression(tokens, 0)?;
                 ensure!(
                     tokens.next_if_eq(&Token::Semicolon).is_some(),
                     "Expected semicolumn at the end of statement but found: {:?}",
@@ -107,7 +109,14 @@ impl Token {
         tokens: &mut Peekable<impl Iterator<Item = Token>>,
         precedence: u8,
     ) -> Result<Expression> {
-        let mut left = self.parse_prefix(tokens)?;
+        println!(
+            "Parsing expression: {:?} with precedence: {}",
+            self, precedence
+        );
+        let mut left = self.parse_prefix(tokens).map_err(|x| {
+            println!("parse prefix error: {:?}", x);
+            x
+        })?;
 
         while tokens
             .peek()
@@ -115,18 +124,36 @@ impl Token {
             .is_some()
         {
             let token = tokens.next().expect("Already peeked");
-            //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
-            let Some(expression_type) = token.binary_expression_type() else {
-                break;
-            };
 
-            let right = token.parse_infix(tokens)?;
+            //currently does not autoformat lmao: https://github.com/rust-lang/rustfmt/issues/4914
+            //this is kinda ugly.
+            let Some(expression_type) = token
+                .binary_expression_type()
+                .map(|y| Left(y))
+                .or(token.testeee().map(|x| Right(x))) else {
+                    break;
+                };
 
             //TODO: how can I assign left at the same time it is being moved?
-            left = expression_type(BinaryExpression {
-                lhs: Box::new(left),
-                rhs: Box::new(right),
-            });
+            match expression_type {
+                Left(expression_type) => {
+                    let right = token.parse_infix(tokens)?;
+                    left = expression_type(BinaryExpression {
+                        lhs: Box::new(left),
+                        rhs: Box::new(right),
+                    });
+                }
+                Right(expression_type) => {
+                    left = expression_type(CallExpression {
+                        function: match left {
+                            Expression::Function(body) => Right(body),
+                            Expression::Identifier(name) => Left(name),
+                            _ => bail!("Expected function or identifier"),
+                        },
+                        arguments: Some(Token::parse_call_arguments(tokens)?),
+                    });
+                }
+            }
         }
 
         Ok(left)
@@ -297,6 +324,40 @@ impl Token {
         Ok(statements)
     }
 
+    fn parse_call_arguments(
+        tokens: &mut Peekable<impl Iterator<Item = Token>>,
+    ) -> Result<Vec<Expression>> {
+        let mut arguments = vec![];
+
+        if tokens.next_if_eq(&Token::RParen).is_some() {
+            return Ok(arguments);
+        }
+
+        arguments.push(
+            tokens
+                .next()
+                .ok_or(anyhow!("Missing next token"))?
+                .parse_expression(tokens, 0)?,
+        );
+
+        while tokens.next_if_eq(&Token::Comma).is_some() {
+            arguments.push(
+                tokens
+                    .next()
+                    .ok_or(anyhow!("Missing next token"))?
+                    .parse_expression(tokens, 0)?,
+            );
+        }
+
+        ensure!(
+            tokens.next_if_eq(&Token::RParen).is_some(),
+            "Missing closing parenthesis. Found {:?}",
+            tokens.peek()
+        );
+
+        Ok(arguments)
+    }
+
     //TODO: find why I can't wrap the expressions directly using Some()?
     #[inline]
     fn binary_expression_type(&self) -> Option<fn(BinaryExpression) -> Expression> {
@@ -312,6 +373,15 @@ impl Token {
             _ => return None,
         };
         Some(expression_type)
+    }
+
+    //TODO: find why I can't wrap the expressions directly using Some()?
+    #[inline]
+    fn testeee(&self) -> Option<fn(CallExpression) -> Expression> {
+        if matches!(self, Token::LParen) {
+            return Some(|x| Expression::Call(x));
+        }
+        None
     }
 
     #[inline]
@@ -331,7 +401,7 @@ impl Token {
             Token::Gt | Token::Lt => 3,
             Token::Plus | Token::Minus => 4,
             Token::Slash | Token::Asterisk => 5,
-            Token::LParen => 6,
+            Token::LParen => 7,
             _ => {
                 println!("No precedence for {:?}", self);
                 0

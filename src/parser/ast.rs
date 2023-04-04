@@ -1,3 +1,4 @@
+use either::Either;
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
@@ -27,9 +28,16 @@ pub enum Expression {
     Div(BinaryExpression),
     If(IfExpression),
     Function(FunctionExpression),
+    Call(CallExpression),
 }
 
 type UnaryExpression = Box<Expression>;
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct CallExpression {
+    pub arguments: Option<Vec<Expression>>,
+    pub function: Either<SmolStr, FunctionExpression>,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct FunctionExpression {

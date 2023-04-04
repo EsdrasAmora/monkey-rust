@@ -37,6 +37,24 @@ mod tests {
     use smol_str::SmolStr;
 
     #[test]
+    fn parse_call_expression() {
+        let input = "
+        myFn();
+        myFn(1,2);
+        myFn(1, 2 * 3, -4 + 5);
+        myFn(fn() {});
+        fn() {}();
+        fn(x) { return x; }(1);
+        -myFn(1,2);
+        myFn(fn(a,b) {return a + b;}(1,2));";
+
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        println!("{:#?}", program.nodes);
+    }
+
+    #[test]
     fn parse_fn_expression() {
         let input = "
         fn() {};
