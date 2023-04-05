@@ -31,7 +31,8 @@ pub enum Expression {
     Call(CallExpression),
 }
 
-type UnaryExpression = Box<Expression>;
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct UnaryExpression(pub Box<Expression>);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CallExpression {
