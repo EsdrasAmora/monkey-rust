@@ -1,11 +1,12 @@
 use crate::parser::ast::{BinaryExpression, Expression};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Illegal,
-    Identifier(SmolStr),
+    Identifier(Identifier),
     //Literals
     Int(i64),
     String(SmolStr), // a Cow may would be better here.
@@ -38,11 +39,52 @@ pub enum Token {
     Return,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Identifier(SmolStr);
+
+impl Identifier {
+    #[inline]
+    pub fn new(name: SmolStr) -> Self {
+        Self(name)
+    }
+
+    #[inline]
+    pub fn into_inner(self) -> SmolStr {
+        self.0
+    }
+}
+
+impl TryFrom<Token> for Identifier {
+    type Error = Token;
+
+    #[inline]
+    fn try_from(token: Token) -> Result<Self, Self::Error> {
+        match token {
+            Token::Identifier(name) => Ok(name),
+            _ => Err(token),
+        }
+    }
+}
+
+impl From<Identifier> for SmolStr {
+    #[inline]
+    fn from(name: Identifier) -> Self {
+        name.into_inner()
+    }
+}
+
+impl From<SmolStr> for Identifier {
+    #[inline]
+    fn from(name: SmolStr) -> Self {
+        Self::new(name)
+    }
+}
+
 impl Token {
-    //TODO: find why I can't wrap the expressions directly using Some()?
+    //WTF: why I can't wrap the expressions directly using Some()?
     #[inline]
     pub fn binary_expression_type(&self) -> Option<fn(BinaryExpression) -> Expression> {
-        let expression_type = match self {
+        Some(match self {
             Token::Plus => Expression::Add,
             Token::Minus => Expression::Sub,
             Token::Slash => Expression::Div,
@@ -52,8 +94,7 @@ impl Token {
             Token::Lt => Expression::Lt,
             Token::Gt => Expression::Gt,
             _ => return None,
-        };
-        Some(expression_type)
+        })
     }
 
     #[inline]
@@ -69,15 +110,7 @@ impl Token {
     }
 
     #[inline]
-    pub fn try_into_identifier(self) -> Result<SmolStr, Self> {
-        match self {
-            Token::Identifier(name) => Ok(name),
-            _ => Err(self),
-        }
-    }
-
-    #[inline]
-    pub fn into_identifier(self) -> Option<SmolStr> {
+    pub fn into_identifier(self) -> Option<Identifier> {
         match self {
             Token::Identifier(name) => Some(name),
             _ => None,
@@ -87,5 +120,18 @@ impl Token {
     #[inline]
     pub fn is_identifier(&self) -> bool {
         matches!(self, Token::Identifier(_))
+    }
+
+    #[inline]
+    pub fn is_literal(&self) -> bool {
+        matches!(
+            self,
+            Token::Int(_)
+                | Token::String(_)
+                | Token::True
+                | Token::False
+                | Token::Nil
+                | Token::Identifier(_)
+        )
     }
 }

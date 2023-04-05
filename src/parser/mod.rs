@@ -199,15 +199,15 @@ mod tests {
             program.nodes,
             [
                 Statement::Let {
-                    identifier: SmolStr::new("x"),
+                    identifier: SmolStr::new("x").into(),
                     value: Box::new(Literal::False.into())
                 },
                 Statement::Let {
-                    identifier: SmolStr::new("y"),
+                    identifier: SmolStr::new("y").into(),
                     value: Box::new(Literal::Int(10).into())
                 },
                 Statement::Let {
-                    identifier: SmolStr::new("foobar"),
+                    identifier: SmolStr::new("foobar").into(),
                     value: Box::new(Literal::True.into())
                 }
             ]

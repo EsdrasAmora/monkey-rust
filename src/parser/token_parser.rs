@@ -4,9 +4,12 @@ use std::{
     vec,
 };
 
-use crate::parser::ast::{
-    BinaryExpression, CallExpression, Expression, FunctionExpression, IfExpression, Literal,
-    Statement, UnaryExpression,
+use crate::{
+    lexer::token::Identifier,
+    parser::ast::{
+        BinaryExpression, CallExpression, Expression, FunctionExpression, IfExpression, Literal,
+        Statement, UnaryExpression,
+    },
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use either::Either::{Left, Right};
@@ -14,6 +17,8 @@ use smol_str::SmolStr;
 use std::vec::IntoIter;
 
 use crate::lexer::token::Token;
+
+use super::ast::BlockStatement;
 
 pub struct TokenParser(Peekable<IntoIter<Token>>);
 
@@ -44,52 +49,36 @@ impl TokenParser {
                     .next_if(Token::is_identifier)
                     .and_then(Token::into_identifier)
                     .ok_or(anyhow!(
-                        "Expected token to be {:?}, but got {:?} instead",
-                        Token::Identifier(SmolStr::default()),
+                        "Expected token {:?} but found {:?}",
+                        Token::Identifier(Identifier::new(SmolStr::default())),
                         self.peek(),
                     ))?;
 
-                ensure!(
-                    self.next_if_eq(&Token::Assign).is_some(),
-                    "Expected assign after identifier found: {:?}",
-                    self.peek()
-                );
-                let fixme = self.next().ok_or(anyhow!("Missing next token"))?;
+                self.try_eat(&Token::Assign)?;
+                let fixme = self.try_next()?;
                 let expression = self.parse_expression(fixme, 0)?;
-                ensure!(
-                    self.next_if_eq(&Token::Semicolon).is_some(),
-                    "Expected semicolumn at the end of statement but found: {:?}",
-                    self.peek()
-                );
+                self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Let {
                     identifier: name,
                     value: Box::new(expression),
                 })
             }
             Token::Return => {
-                let fixme = self.next().ok_or(anyhow!("Missing next token"))?;
+                let fixme = self.try_next()?;
                 let expression = self.parse_expression(fixme, 0)?;
-                ensure!(
-                    self.next_if_eq(&Token::Semicolon).is_some(),
-                    "Expected semicolumn at the end of statement but found: {:?}",
-                    self.peek()
-                );
+                self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Return(Box::new(expression)))
             }
             _ => {
                 let expression = self.parse_expression(token, 0)?;
-                ensure!(
-                    self.next_if_eq(&Token::Semicolon).is_some(),
-                    "Expected semicolumn at the end of statement but found: {:?}",
-                    self.peek()
-                );
+                self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Expression(Box::new(expression)))
             }
         }
     }
 
     fn parse_expression(&mut self, current_token: Token, precedence: u8) -> Result<Expression> {
-        let mut left = self.parse_prefix(&current_token)?;
+        let mut left = self.parse_prefix(current_token)?;
 
         while self
             .peek()
@@ -100,7 +89,7 @@ impl TokenParser {
 
             if let Some(expression_type) = token.binary_expression_type() {
                 let right = self.parse_infix(&token)?;
-                //TODO: how can I assign left at the same time it is being moved?
+                //WTF: how can I assign left at the same time it is being moved?
                 left = expression_type(BinaryExpression {
                     lhs: Box::new(left),
                     rhs: Box::new(right),
@@ -126,23 +115,31 @@ impl TokenParser {
         Ok(left)
     }
 
-    fn ensure_eq(&mut self, expect: &Token) -> Result<()> {
+    #[inline]
+    fn try_next(&mut self) -> Result<Token> {
+        self.next()
+            .ok_or(anyhow!("Unexpected end of file, no more tokens"))
+    }
+
+    #[inline]
+    fn try_eat(&mut self, expect: &Token) -> Result<()> {
         ensure!(
-            self.next_if_eq(&expect).is_some(),
-            "Missing token {:?}. Found {:?}",
+            self.next_if_eq(expect).is_some(),
+            "Expected token {:?} but found {:?}",
             expect,
             self.peek()
         );
         Ok(())
     }
 
-    fn parse_prefix(&mut self, token: &Token) -> Result<Expression> {
+    #[inline]
+    fn parse_prefix(&mut self, token: Token) -> Result<Expression> {
         match token {
-            Token::Identifier(name) => Ok(Expression::Identifier(name.clone())),
-            Token::Int(value) => Ok(Expression::Literal(Literal::Int(*value))),
+            Token::Identifier(name) => Ok(Expression::Identifier(name.into_inner())),
+            Token::Int(value) => Ok(Expression::Literal(Literal::Int(value))),
             Token::True => Ok(Literal::True.into()),
             Token::False => Ok(Literal::False.into()),
-            Token::String(value) => Ok(Expression::Literal(Literal::String(value.clone()))),
+            Token::String(value) => Ok(Expression::Literal(Literal::String(value))),
             Token::Nil => Ok(Literal::Nil.into()),
             Token::Bang => Ok(Expression::Not(self.parse_unary_expression()?)),
             Token::Minus => Ok(Expression::Oposite(self.parse_unary_expression()?)),
@@ -156,48 +153,34 @@ impl TokenParser {
     #[inline]
     fn parse_infix(&mut self, token: &Token) -> Result<Expression> {
         let precedence = token.precedence();
-        let next = self.next().ok_or(anyhow!("any"))?;
+        let next = self.try_next()?;
         self.parse_expression(next, precedence)
     }
 
+    #[inline]
     fn parse_grouped_expression(&mut self) -> Result<Expression> {
-        let expression = self.next().ok_or(anyhow!("Missing next token"))?;
+        let expression = self.try_next()?;
         let expression = self.parse_expression(expression, 0)?;
 
-        ensure!(
-            self.next_if_eq(&Token::RParen).is_some(),
-            "Missing closing parenthesis. Found {:?}",
-            self.peek()
-        );
-
+        self.try_eat(&Token::RParen)?;
         Ok(expression)
     }
 
+    #[inline]
     fn parse_unary_expression(&mut self) -> Result<UnaryExpression> {
-        let right = self.next().ok_or(anyhow!("Missing next token"))?;
+        let right = self.try_next()?;
         let right = self.parse_expression(right, 6)?;
         Ok(UnaryExpression(Box::new(right)))
     }
 
+    #[inline]
     fn parse_if_expression(&mut self) -> Result<Expression> {
-        ensure!(
-            self.next_if_eq(&Token::LParen).is_some(),
-            "Missing opening parem. Found {:?}",
-            self.peek()
-        );
-        let fixme = self.next().ok_or(anyhow!("Missing next token"))?;
+        self.try_eat(&Token::LParen)?;
+        let fixme = self.try_next()?;
         let condition = self.parse_expression(fixme, 0)?;
 
-        ensure!(
-            self.next_if_eq(&Token::RParen).is_some(),
-            "Missing closing parem. Found {:?}",
-            self.peek()
-        );
-        ensure!(
-            self.next_if_eq(&Token::LBrace).is_some(),
-            "Missing opening brace. Found {:?}",
-            self.peek()
-        );
+        self.try_eat(&Token::RParen)?;
+        self.try_eat(&Token::LBrace)?;
         let consequence = self.parse_block()?;
 
         if self.next_if_eq(&Token::Else).is_none() {
@@ -209,11 +192,7 @@ impl TokenParser {
         }
 
         //TODO: Not sure if I should return errors here
-        ensure!(
-            self.next_if_eq(&Token::LBrace).is_some(),
-            "Missing opening brace. Found {:?}",
-            self.peek()
-        );
+        self.try_eat(&Token::LBrace)?;
         let alternative = Some(self.parse_block()?);
         Ok(Expression::If(IfExpression {
             condition: Box::new(condition),
@@ -222,23 +201,18 @@ impl TokenParser {
         }))
     }
 
-    fn parse_block(&mut self) -> Result<Vec<Statement>> {
+    fn parse_block(&mut self) -> Result<BlockStatement> {
         let mut statements = vec![];
 
         while self.peek().filter(|x| x != &&Token::RBrace).is_some() {
-            let fixme = self.next().ok_or(anyhow!("Missing next token"))?;
+            let fixme = self.try_next()?;
             let statement = self.parse_statement(fixme)?;
 
             statements.push(statement);
         }
 
-        ensure!(
-            self.next_if_eq(&Token::RBrace).is_some(),
-            "Missing closing brace. Found {:?}",
-            self.peek()
-        );
-
-        Ok(statements)
+        self.try_eat(&Token::RBrace)?;
+        Ok(BlockStatement::new(statements))
     }
 
     fn parse_call_arguments(&mut self) -> Result<Option<Vec<Expression>>> {
@@ -247,40 +221,27 @@ impl TokenParser {
         }
 
         let mut arguments = vec![];
-        let fixme = self.next().ok_or(anyhow!("Missing next token"))?;
+        let fixme = self.try_next()?;
         arguments.push(self.parse_expression(fixme, 0)?);
 
         while self.next_if_eq(&Token::Comma).is_some() {
-            let fixme = self.next().ok_or(anyhow!("Missing next token"))?;
+            let fixme = self.try_next()?;
             arguments.push(self.parse_expression(fixme, 0)?);
         }
 
-        ensure!(
-            self.next_if_eq(&Token::RParen).is_some(),
-            "Missing closing parenthesis. Found {:?}",
-            self.peek()
-        );
-
+        self.try_eat(&Token::RParen)?;
         Ok(Some(arguments))
     }
 
     fn parse_fn_expression(&mut self) -> Result<Expression> {
-        ensure!(
-            self.next_if_eq(&Token::LParen).is_some(),
-            "Missing opening parem. Found {:?}",
-            self.peek()
-        );
+        self.try_eat(&Token::LParen)?;
 
         let parameters = self
             .next_if_eq(&Token::RParen)
             .map_or_else(|| self.parse_function_parameters().ok(), |_| None);
         //TODO: handle parse_function_parameters error
 
-        ensure!(
-            self.next_if_eq(&Token::LBrace).is_some(),
-            "Missing opening brace. Found {:?}",
-            self.peek()
-        );
+        self.try_eat(&Token::LBrace)?;
 
         let body = self.parse_block()?;
         Ok(Expression::Function(FunctionExpression {
@@ -289,32 +250,24 @@ impl TokenParser {
         }))
     }
 
-    fn parse_function_parameters(&mut self) -> Result<Vec<SmolStr>> {
+    fn parse_function_parameters(&mut self) -> Result<Vec<Identifier>> {
         //all identifiers, create own struct
         let mut parameters = vec![];
-
         parameters.push(
-            self.next()
-                .ok_or(anyhow!("Missing next token"))?
-                .try_into_identifier()
+            self.try_next()?
+                .try_into()
                 .map_err(|token| anyhow!("Expected identifier but found: {:?}", token))?,
         );
 
         while self.next_if_eq(&Token::Comma).is_some() {
             parameters.push(
-                self.next()
-                    .ok_or(anyhow!("Missing next token"))?
-                    .try_into_identifier()
+                self.try_next()?
+                    .try_into()
                     .map_err(|token| anyhow!("Expected identifier but found: {:?}", token))?,
             );
         }
 
-        ensure!(
-            self.next_if_eq(&Token::RParen).is_some(),
-            "Missing closing parenthesis. Found {:?}",
-            self.peek()
-        );
-
+        self.try_eat(&Token::RParen)?;
         Ok(parameters)
     }
 }
