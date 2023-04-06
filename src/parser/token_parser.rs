@@ -103,7 +103,6 @@ impl TokenParser {
 
     #[inline]
     fn try_eat(&mut self, expect: &Token) -> Result<()> {
-        //TODO: create error for this.
         ensure!(
             self.next_if_eq(expect).is_some(),
             "Expected token {:?} but found {:?}",
@@ -142,7 +141,6 @@ impl TokenParser {
     fn parse_grouped_expression(&mut self) -> Result<Expression> {
         let expression = self.try_next()?;
         let expression = self.parse_expression(expression, 0)?;
-
         self.try_eat(&Token::RParen)?;
         Ok(expression)
     }
@@ -159,7 +157,6 @@ impl TokenParser {
         self.try_eat(&Token::LParen)?;
         let token = self.try_next()?;
         let condition = self.parse_expression(token, 0)?;
-
         self.try_eat(&Token::RParen)?;
         self.try_eat(&Token::LBrace)?;
         let consequence = self.parse_block()?;
@@ -172,7 +169,6 @@ impl TokenParser {
             }));
         }
 
-        //TODO: Not sure if I should return errors here
         self.try_eat(&Token::LBrace)?;
         let alternative = Some(self.parse_block()?);
         Ok(Expression::If(IfExpression {
@@ -214,10 +210,11 @@ impl TokenParser {
     fn parse_fn_expression(&mut self) -> Result<Expression> {
         self.try_eat(&Token::LParen)?;
 
-        let parameters = self
-            .next_if_eq(&Token::RParen)
-            .map_or_else(|| self.parse_function_parameters().ok(), |_| None);
-        //TODO: handle parse_function_parameters error
+        let parameters = if self.next_if_eq(&Token::RParen).is_none() {
+            Some(self.parse_function_parameters()?)
+        } else {
+            None
+        };
 
         self.try_eat(&Token::LBrace)?;
         let body = self.parse_block()?;
@@ -228,7 +225,6 @@ impl TokenParser {
     }
 
     fn parse_function_parameters(&mut self) -> Result<Vec<Identifier>> {
-        //all identifiers, create own struct
         let mut parameters = vec![];
         parameters.push(self.try_next()?.try_into()?);
 

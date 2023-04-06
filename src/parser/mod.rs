@@ -29,6 +29,7 @@ impl Parser {
 
 //TODO: not sure if i should keep the expected json's here or in the mocks folder. Maybe I should just use insta (snapshot)?
 //TODO: missing Assign support, only able to declare variables with let but not assign them afterwards;
+//TODO: create error types and think about when to buble them up
 #[cfg(test)]
 mod tests {
     use super::*;
