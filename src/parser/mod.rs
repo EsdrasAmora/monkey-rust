@@ -13,8 +13,8 @@ struct Parser {
 
 impl Parser {
     fn new(lexer: Lexer) -> Self {
-        let mut nodes = Vec::with_capacity(32);
-        let mut errors = Vec::with_capacity(8);
+        let mut nodes = Vec::new();
+        let mut errors = Vec::new();
         let mut tokens = TokenParser::new(lexer.tokens);
 
         while let Some(current) = tokens.next() {

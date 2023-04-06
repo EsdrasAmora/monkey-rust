@@ -1,5 +1,5 @@
 use crate::parser::ast::{BinaryExpression, Expression};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
@@ -55,13 +55,13 @@ impl Identifier {
 }
 
 impl TryFrom<Token> for Identifier {
-    type Error = Token;
+    type Error = anyhow::Error;
 
     #[inline]
     fn try_from(token: Token) -> Result<Self, Self::Error> {
         match token {
             Token::Identifier(name) => Ok(name),
-            _ => Err(token),
+            _ => Err(anyhow!("Expected identifier but found: {:?}", token)),
         }
     }
 }

@@ -1,24 +1,17 @@
-use std::{
-    iter::Peekable,
-    ops::{Deref, DerefMut},
-    vec,
-};
-
 use crate::{
-    lexer::token::Identifier,
+    lexer::token::{Identifier, Token},
     parser::ast::{
-        BinaryExpression, CallExpression, Expression, FunctionExpression, IfExpression, Literal,
-        Statement, UnaryExpression,
+        BinaryExpression, BlockStatement, CallExpression, Expression, FunctionExpression,
+        IfExpression, Literal, Statement, UnaryExpression,
     },
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use either::Either::{Left, Right};
-use smol_str::SmolStr;
-use std::vec::IntoIter;
-
-use crate::lexer::token::Token;
-
-use super::ast::BlockStatement;
+use std::{
+    iter::Peekable,
+    ops::{Deref, DerefMut},
+    vec::IntoIter,
+};
 
 pub struct TokenParser(Peekable<IntoIter<Token>>);
 
@@ -44,28 +37,19 @@ impl TokenParser {
     pub fn parse_statement(&mut self, token: Token) -> Result<Statement> {
         match token {
             Token::Let => {
-                //find a way to peak them consume the iterator;
-                let name = self
-                    .next_if(Token::is_identifier)
-                    .and_then(Token::into_identifier)
-                    .ok_or(anyhow!(
-                        "Expected token {:?} but found {:?}",
-                        Token::Identifier(Identifier::new(SmolStr::default())),
-                        self.peek(),
-                    ))?;
-
+                let identifier = self.try_next()?.try_into()?;
                 self.try_eat(&Token::Assign)?;
-                let fixme = self.try_next()?;
-                let expression = self.parse_expression(fixme, 0)?;
+                let token = self.try_next()?;
+                let expression = self.parse_expression(token, 0)?;
                 self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Let {
-                    identifier: name,
+                    identifier,
                     value: Box::new(expression),
                 })
             }
             Token::Return => {
-                let fixme = self.try_next()?;
-                let expression = self.parse_expression(fixme, 0)?;
+                let token = self.try_next()?;
+                let expression = self.parse_expression(token, 0)?;
                 self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Return(Box::new(expression)))
             }
@@ -80,13 +64,9 @@ impl TokenParser {
     fn parse_expression(&mut self, current_token: Token, precedence: u8) -> Result<Expression> {
         let mut left = self.parse_prefix(current_token)?;
 
-        while self
-            .peek()
-            .filter(|x| x != &&Token::Semicolon && precedence < x.precedence())
-            .is_some()
+        while let Some(token) =
+            self.next_if(|x| x != &Token::Semicolon && precedence < x.precedence())
         {
-            let token = self.next().expect("Already peeked");
-
             if let Some(expression_type) = token.binary_expression_type() {
                 let right = self.parse_infix(&token)?;
                 //WTF: how can I assign left at the same time it is being moved?
@@ -123,6 +103,7 @@ impl TokenParser {
 
     #[inline]
     fn try_eat(&mut self, expect: &Token) -> Result<()> {
+        //TODO: create error for this.
         ensure!(
             self.next_if_eq(expect).is_some(),
             "Expected token {:?} but found {:?}",
@@ -176,8 +157,8 @@ impl TokenParser {
     #[inline]
     fn parse_if_expression(&mut self) -> Result<Expression> {
         self.try_eat(&Token::LParen)?;
-        let fixme = self.try_next()?;
-        let condition = self.parse_expression(fixme, 0)?;
+        let token = self.try_next()?;
+        let condition = self.parse_expression(token, 0)?;
 
         self.try_eat(&Token::RParen)?;
         self.try_eat(&Token::LBrace)?;
@@ -204,11 +185,8 @@ impl TokenParser {
     fn parse_block(&mut self) -> Result<BlockStatement> {
         let mut statements = vec![];
 
-        while self.peek().filter(|x| x != &&Token::RBrace).is_some() {
-            let fixme = self.try_next()?;
-            let statement = self.parse_statement(fixme)?;
-
-            statements.push(statement);
+        while let Some(token) = self.next_if(|x| x != &Token::RBrace) {
+            statements.push(self.parse_statement(token)?);
         }
 
         self.try_eat(&Token::RBrace)?;
@@ -221,12 +199,12 @@ impl TokenParser {
         }
 
         let mut arguments = vec![];
-        let fixme = self.try_next()?;
-        arguments.push(self.parse_expression(fixme, 0)?);
+        let token = self.try_next()?;
+        arguments.push(self.parse_expression(token, 0)?);
 
         while self.next_if_eq(&Token::Comma).is_some() {
-            let fixme = self.try_next()?;
-            arguments.push(self.parse_expression(fixme, 0)?);
+            let token = self.try_next()?;
+            arguments.push(self.parse_expression(token, 0)?);
         }
 
         self.try_eat(&Token::RParen)?;
@@ -242,7 +220,6 @@ impl TokenParser {
         //TODO: handle parse_function_parameters error
 
         self.try_eat(&Token::LBrace)?;
-
         let body = self.parse_block()?;
         Ok(Expression::Function(FunctionExpression {
             parameters,
@@ -253,18 +230,10 @@ impl TokenParser {
     fn parse_function_parameters(&mut self) -> Result<Vec<Identifier>> {
         //all identifiers, create own struct
         let mut parameters = vec![];
-        parameters.push(
-            self.try_next()?
-                .try_into()
-                .map_err(|token| anyhow!("Expected identifier but found: {:?}", token))?,
-        );
+        parameters.push(self.try_next()?.try_into()?);
 
         while self.next_if_eq(&Token::Comma).is_some() {
-            parameters.push(
-                self.try_next()?
-                    .try_into()
-                    .map_err(|token| anyhow!("Expected identifier but found: {:?}", token))?,
-            );
+            parameters.push(self.try_next()?.try_into()?);
         }
 
         self.try_eat(&Token::RParen)?;
