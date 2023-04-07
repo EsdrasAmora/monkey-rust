@@ -1,9 +1,6 @@
-pub(crate) mod token;
+use crate::token::{Identifier, Token};
 use smol_str::SmolStr;
 use std::iter::Peekable;
-use token::Token;
-
-use self::token::Identifier;
 
 #[derive(Debug)]
 pub struct Lexer {

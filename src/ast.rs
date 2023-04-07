@@ -1,8 +1,7 @@
+use crate::token::{Identifier, Token};
 use either::Either;
 use serde::Serialize;
 use smol_str::SmolStr;
-
-use crate::lexer::token::Identifier;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Statement {
@@ -94,5 +93,24 @@ impl Literal {
 impl From<Literal> for Expression {
     fn from(literal: Literal) -> Self {
         Expression::Literal(literal)
+    }
+}
+
+impl Token {
+    // WTF: why I can't wrap each branch using Some()?
+    // implemented this token method here so it does not depend on the ast.
+    #[inline]
+    pub fn binary_expression_type(&self) -> Option<fn(BinaryExpression) -> Expression> {
+        Some(match self {
+            Token::Plus => Expression::Add,
+            Token::Minus => Expression::Sub,
+            Token::Slash => Expression::Div,
+            Token::Asterisk => Expression::Mul,
+            Token::Eq => Expression::Eq,
+            Token::NotEq => Expression::NotEq,
+            Token::Lt => Expression::Lt,
+            Token::Gt => Expression::Gt,
+            _ => return None,
+        })
     }
 }

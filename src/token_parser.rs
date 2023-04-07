@@ -1,16 +1,17 @@
-use crate::{
-    lexer::token::{Identifier, Token},
-    parser::ast::{
-        BinaryExpression, BlockStatement, CallExpression, Expression, FunctionExpression,
-        IfExpression, Literal, Statement, UnaryExpression,
-    },
-};
 use anyhow::{anyhow, bail, ensure, Result};
 use either::Either::{Left, Right};
 use std::{
     iter::Peekable,
     ops::{Deref, DerefMut},
     vec::IntoIter,
+};
+
+use crate::{
+    ast::{
+        BinaryExpression, BlockStatement, CallExpression, Expression, FunctionExpression,
+        IfExpression, Literal, Statement, UnaryExpression,
+    },
+    token::{Identifier, Token},
 };
 
 pub struct TokenParser(Peekable<IntoIter<Token>>);

@@ -1,4 +1,3 @@
-use crate::parser::ast::{BinaryExpression, Expression};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
@@ -81,22 +80,6 @@ impl From<SmolStr> for Identifier {
 }
 
 impl Token {
-    //WTF: why I can't wrap the expressions directly using Some()?
-    #[inline]
-    pub fn binary_expression_type(&self) -> Option<fn(BinaryExpression) -> Expression> {
-        Some(match self {
-            Token::Plus => Expression::Add,
-            Token::Minus => Expression::Sub,
-            Token::Slash => Expression::Div,
-            Token::Asterisk => Expression::Mul,
-            Token::Eq => Expression::Eq,
-            Token::NotEq => Expression::NotEq,
-            Token::Lt => Expression::Lt,
-            Token::Gt => Expression::Gt,
-            _ => return None,
-        })
-    }
-
     #[inline]
     pub fn precedence(&self) -> u8 {
         match self {
@@ -107,19 +90,6 @@ impl Token {
             Token::LParen => 7,
             _ => 0,
         }
-    }
-
-    #[inline]
-    pub fn into_identifier(self) -> Option<Identifier> {
-        match self {
-            Token::Identifier(name) => Some(name),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    pub fn is_identifier(&self) -> bool {
-        matches!(self, Token::Identifier(_))
     }
 
     #[inline]

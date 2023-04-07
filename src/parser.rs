@@ -1,8 +1,8 @@
-pub(crate) mod ast;
-pub(crate) mod token_parser;
-
-use self::{ast::Statement, token_parser::TokenParser};
+use self::ast::Statement;
+use self::token_parser::TokenParser;
+use crate::ast;
 use crate::lexer::Lexer;
+use crate::token_parser;
 use anyhow::Error;
 
 #[derive(Debug)]
@@ -171,7 +171,7 @@ mod tests {
     }
 
     #[test]
-    fn check_parser_precedence_2() {
+    fn check_parser_precedence() {
         let input = r#"
         -a * b;
         !-a;
