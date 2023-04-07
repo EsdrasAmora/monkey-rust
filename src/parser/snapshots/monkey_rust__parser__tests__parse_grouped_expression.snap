@@ -1,0 +1,27 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    Mul:
+      lhs:
+        Add:
+          lhs:
+            Literal:
+              Int: 5
+          rhs:
+            Literal:
+              Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    Oposite:
+      Add:
+        lhs:
+          Literal:
+            Int: 5
+        rhs:
+          Literal:
+            Int: 5
+

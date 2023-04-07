@@ -1,10 +1,10 @@
 use either::Either;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use smol_str::SmolStr;
 
 use crate::lexer::token::Identifier;
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Statement {
     Let {
         identifier: Identifier,
@@ -14,7 +14,7 @@ pub enum Statement {
     Expression(Box<Expression>),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expression {
     Literal(Literal),
     Identifier(SmolStr),
@@ -33,35 +33,35 @@ pub enum Expression {
     Call(CallExpression),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct UnaryExpression(pub Box<Expression>);
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct CallExpression {
     pub arguments: Option<Vec<Expression>>,
     pub function: Either<SmolStr, FunctionExpression>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct FunctionExpression {
     pub parameters: Option<Vec<Identifier>>,
     pub body: BlockStatement,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct IfExpression {
     pub condition: Box<Expression>,
     pub consequence: BlockStatement,
     pub alternative: Option<BlockStatement>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct BinaryExpression {
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Default)]
 pub struct BlockStatement(pub Vec<Statement>);
 
 impl BlockStatement {
@@ -76,7 +76,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Literal {
     Int(i64),
     String(SmolStr),

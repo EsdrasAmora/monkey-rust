@@ -1,0 +1,8 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    Literal:
+      Int: 3
+

@@ -1,0 +1,19 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    Oposite:
+      Literal:
+        Int: 1
+- Expression:
+    Not:
+      Literal:
+        Int: 5
+- Expression:
+    Not:
+      Not:
+        Oposite:
+          Literal:
+            Int: 2
+

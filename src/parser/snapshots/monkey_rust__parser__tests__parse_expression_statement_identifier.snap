@@ -1,0 +1,7 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    Identifier: foobar
+

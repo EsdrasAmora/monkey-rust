@@ -1,0 +1,101 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    Call:
+      arguments: ~
+      function:
+        Left: myFn
+- Expression:
+    Call:
+      arguments:
+        - Literal:
+            Int: 1
+        - Literal:
+            Int: 2
+      function:
+        Left: myFn
+- Expression:
+    Call:
+      arguments:
+        - Literal:
+            Int: 1
+        - Mul:
+            lhs:
+              Literal:
+                Int: 2
+            rhs:
+              Literal:
+                Int: 3
+        - Add:
+            lhs:
+              Oposite:
+                Literal:
+                  Int: 4
+            rhs:
+              Literal:
+                Int: 5
+      function:
+        Left: myFn
+- Expression:
+    Call:
+      arguments:
+        - Function:
+            parameters: ~
+            body: []
+      function:
+        Left: myFn
+- Expression:
+    Call:
+      arguments: ~
+      function:
+        Right:
+          parameters: ~
+          body: []
+- Expression:
+    Call:
+      arguments:
+        - Literal:
+            Int: 1
+      function:
+        Right:
+          parameters:
+            - x
+          body:
+            - Return:
+                Identifier: x
+- Expression:
+    Oposite:
+      Call:
+        arguments:
+          - Literal:
+              Int: 1
+          - Literal:
+              Int: 2
+        function:
+          Left: myFn
+- Expression:
+    Call:
+      arguments:
+        - Call:
+            arguments:
+              - Literal:
+                  Int: 1
+              - Literal:
+                  Int: 2
+            function:
+              Right:
+                parameters:
+                  - a
+                  - b
+                body:
+                  - Return:
+                      Add:
+                        lhs:
+                          Identifier: a
+                        rhs:
+                          Identifier: b
+      function:
+        Left: myFn
+

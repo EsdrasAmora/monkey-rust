@@ -1,0 +1,14 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Return:
+    Literal:
+      Int: 5
+- Return:
+    Literal:
+      Int: 10
+- Return:
+    Literal:
+      Int: 993322
+

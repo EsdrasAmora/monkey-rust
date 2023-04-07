@@ -27,16 +27,12 @@ impl Parser {
     }
 }
 
-//TODO: not sure if i should keep the expected json's here or in the mocks folder. Maybe I should just use insta (snapshot)?
 //TODO: missing Assign support, only able to declare variables with let but not assign them afterwards;
 //TODO: create error types and think about when to buble them up
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ast::{Expression, Literal, UnaryExpression};
-    use pretty_assertions::assert_eq;
-    use serde_json::json;
-    use smol_str::SmolStr;
+    use insta::assert_yaml_snapshot;
 
     #[test]
     fn parse_call_expression() {
@@ -53,7 +49,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        println!("{:#?}", program.nodes);
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -66,7 +62,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        println!("{:#?}", program.nodes);
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -76,7 +72,7 @@ mod tests {
         let program = Parser::new(lexer);
 
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        println!("{:#?}", program.nodes);
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -86,7 +82,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        println!("{:#?}", program.nodes);
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -99,11 +95,8 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        println!("{:#?}", program.nodes);
+        assert_yaml_snapshot!(program.nodes);
     }
-
-    #[test]
-    fn parse_function_call_expression() {}
 
     #[test]
     fn parse_infix_expression() {
@@ -120,18 +113,7 @@ mod tests {
         let program = Parser::new(lexer);
 
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-
-        let right = json!([
-            {"Expression": {"Add":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
-            {"Expression":{"Sub":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
-            {"Expression":{"Mul":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
-            {"Expression":{"Div":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
-            {"Expression":{"Gt":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
-            {"Expression":{"Lt":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
-            {"Expression":{"Eq":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}},
-            {"Expression":{"NotEq":{"lhs":{"Literal":{"Int":5}},"rhs":{"Literal":{"Int":5}}}}}
-        ]);
-        assert_eq!(serde_json::to_value(&program.nodes).unwrap(), right)
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -143,22 +125,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        assert_eq!(
-            program.nodes,
-            [
-                Statement::Expression(Box::new(Expression::Oposite(UnaryExpression(Box::new(
-                    Literal::Int(1).into()
-                ))))),
-                Statement::Expression(Box::new(Expression::Not(UnaryExpression(Box::new(
-                    Literal::Int(5).into()
-                ))))),
-                Statement::Expression(Box::new(Expression::Not(UnaryExpression(Box::new(
-                    Expression::Not(UnaryExpression(Box::new(Expression::Oposite(
-                        UnaryExpression(Box::new(Literal::Int(2).into()))
-                    ))))
-                )))))
-            ]
-        )
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -167,12 +134,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        assert_eq!(
-            program.nodes,
-            [Statement::Expression(Box::new(Expression::Identifier(
-                SmolStr::new("foobar")
-            )))]
-        )
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -181,10 +143,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        assert_eq!(
-            program.nodes,
-            [Statement::Expression(Box::new(Literal::Int(3).into()))]
-        )
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -196,23 +155,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        assert_eq!(
-            program.nodes,
-            [
-                Statement::Let {
-                    identifier: SmolStr::new("x").into(),
-                    value: Box::new(Literal::False.into())
-                },
-                Statement::Let {
-                    identifier: SmolStr::new("y").into(),
-                    value: Box::new(Literal::Int(10).into())
-                },
-                Statement::Let {
-                    identifier: SmolStr::new("foobar").into(),
-                    value: Box::new(Literal::True.into())
-                }
-            ]
-        )
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
@@ -224,46 +167,40 @@ mod tests {
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
-        assert_eq!(
-            program.nodes,
-            [
-                Statement::Return(Box::new(Literal::Int(5).into())),
-                Statement::Return(Box::new(Literal::Int(10).into())),
-                Statement::Return(Box::new(Literal::Int(993322).into()))
-            ]
-        )
+        assert_yaml_snapshot!(program.nodes);
     }
 
     #[test]
     fn check_parser_precedence_2() {
         let input = r#"
-        -a * b
-        !-a
-        a + b + c
-        a + b - c
-        a * b * c
-        a * b / c
-        a + b / c
-        a + b * c + d / e - f
-        3 + 4; -5 * 5
-        5 > 4 == 3 < 4
-        5 < 4 != 3 > 4
-        3 + 4 * 5 == 3 * 1 + 4 * 5
-        true
-        false
-        3 > 5 == false
-        3 < 5 == true
-        1 + (2 + 3) + 4
-        (5 + 5) * 2
-        2 / (5 + 5)
-        (5 + 5) * 2 * (5 + 5)
-        -(5 + 5)
-        !(true == true)
-        a + add(b * c) + d
-        add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))
+        -a * b;
+        !-a;
+        a + b + c;
+        a + b - c;
+        a * b * c;
+        a * b / c;
+        a + b / c;
+        a + b * c + d / e - f;
+        3 + 4; -5 * 5;
+        5 > 4 == 3 < 4;
+        5 < 4 != 3 > 4;
+        3 + 4 * 5 == 3 * 1 + 4 * 5;
+        true;
+        false;
+        3 > 5 == false;
+        3 < 5 == true;
+        1 + (2 + 3) + 4;
+        (5 + 5) * 2;
+        2 / (5 + 5);
+        (5 + 5) * 2 * (5 + 5);
+        -(5 + 5);
+        !(true == true);
+        a + add(b * c) + d;
+        add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8));
         add(a + b + c * d / f + g);"#;
-        // let lexer = Lexer::new(input);
-        // let program = Parser::new(lexer);
-        // println!("{:#?}", program.nodes);
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        assert_yaml_snapshot!(program.nodes);
     }
 }

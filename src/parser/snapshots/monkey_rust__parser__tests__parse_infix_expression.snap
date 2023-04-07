@@ -1,0 +1,69 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    Add:
+      lhs:
+        Literal:
+          Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    Sub:
+      lhs:
+        Literal:
+          Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    Mul:
+      lhs:
+        Literal:
+          Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    Div:
+      lhs:
+        Literal:
+          Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    Gt:
+      lhs:
+        Literal:
+          Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    Lt:
+      lhs:
+        Literal:
+          Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    Eq:
+      lhs:
+        Literal:
+          Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    NotEq:
+      lhs:
+        Literal:
+          Int: 5
+      rhs:
+        Literal:
+          Int: 5
+

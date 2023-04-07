@@ -1,0 +1,33 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    Function:
+      parameters: ~
+      body: []
+- Expression:
+    Function:
+      parameters:
+        - x
+      body:
+        - Expression:
+            Identifier: x
+- Expression:
+    Function:
+      parameters:
+        - x
+        - y
+        - z
+      body:
+        - Return:
+            Add:
+              lhs:
+                Add:
+                  lhs:
+                    Identifier: x
+                  rhs:
+                    Identifier: y
+              rhs:
+                Identifier: z
+

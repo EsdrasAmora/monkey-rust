@@ -1,0 +1,17 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    If:
+      condition:
+        Lt:
+          lhs:
+            Identifier: x
+          rhs:
+            Identifier: y
+      consequence:
+        - Return:
+            Identifier: x
+      alternative: ~
+

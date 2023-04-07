@@ -1,0 +1,57 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    If:
+      condition:
+        Lt:
+          lhs:
+            Identifier: x
+          rhs:
+            Identifier: y
+      consequence:
+        - Expression:
+            Identifier: x
+      alternative:
+        - Expression:
+            Identifier: y
+- Expression:
+    If:
+      condition:
+        Lt:
+          lhs:
+            Identifier: x
+          rhs:
+            Identifier: y
+      consequence:
+        - Return:
+            Identifier: x
+      alternative:
+        - Return:
+            Identifier: y
+- Expression:
+    If:
+      condition:
+        Lt:
+          lhs:
+            Identifier: x
+          rhs:
+            Identifier: y
+      consequence:
+        - Expression:
+            Eq:
+              lhs:
+                Identifier: x
+              rhs:
+                Literal:
+                  Int: 3
+      alternative:
+        - Expression:
+            NotEq:
+              lhs:
+                Identifier: x
+              rhs:
+                Literal:
+                  Int: 1
+

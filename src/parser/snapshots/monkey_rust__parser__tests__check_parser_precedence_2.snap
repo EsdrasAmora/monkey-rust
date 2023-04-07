@@ -1,0 +1,365 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Expression:
+    Mul:
+      lhs:
+        Oposite:
+          Identifier: a
+      rhs:
+        Identifier: b
+- Expression:
+    Not:
+      Oposite:
+        Identifier: a
+- Expression:
+    Add:
+      lhs:
+        Add:
+          lhs:
+            Identifier: a
+          rhs:
+            Identifier: b
+      rhs:
+        Identifier: c
+- Expression:
+    Sub:
+      lhs:
+        Add:
+          lhs:
+            Identifier: a
+          rhs:
+            Identifier: b
+      rhs:
+        Identifier: c
+- Expression:
+    Mul:
+      lhs:
+        Mul:
+          lhs:
+            Identifier: a
+          rhs:
+            Identifier: b
+      rhs:
+        Identifier: c
+- Expression:
+    Div:
+      lhs:
+        Mul:
+          lhs:
+            Identifier: a
+          rhs:
+            Identifier: b
+      rhs:
+        Identifier: c
+- Expression:
+    Add:
+      lhs:
+        Identifier: a
+      rhs:
+        Div:
+          lhs:
+            Identifier: b
+          rhs:
+            Identifier: c
+- Expression:
+    Sub:
+      lhs:
+        Add:
+          lhs:
+            Add:
+              lhs:
+                Identifier: a
+              rhs:
+                Mul:
+                  lhs:
+                    Identifier: b
+                  rhs:
+                    Identifier: c
+          rhs:
+            Div:
+              lhs:
+                Identifier: d
+              rhs:
+                Identifier: e
+      rhs:
+        Identifier: f
+- Expression:
+    Add:
+      lhs:
+        Literal:
+          Int: 3
+      rhs:
+        Literal:
+          Int: 4
+- Expression:
+    Mul:
+      lhs:
+        Oposite:
+          Literal:
+            Int: 5
+      rhs:
+        Literal:
+          Int: 5
+- Expression:
+    Eq:
+      lhs:
+        Gt:
+          lhs:
+            Literal:
+              Int: 5
+          rhs:
+            Literal:
+              Int: 4
+      rhs:
+        Lt:
+          lhs:
+            Literal:
+              Int: 3
+          rhs:
+            Literal:
+              Int: 4
+- Expression:
+    NotEq:
+      lhs:
+        Lt:
+          lhs:
+            Literal:
+              Int: 5
+          rhs:
+            Literal:
+              Int: 4
+      rhs:
+        Gt:
+          lhs:
+            Literal:
+              Int: 3
+          rhs:
+            Literal:
+              Int: 4
+- Expression:
+    Eq:
+      lhs:
+        Add:
+          lhs:
+            Literal:
+              Int: 3
+          rhs:
+            Mul:
+              lhs:
+                Literal:
+                  Int: 4
+              rhs:
+                Literal:
+                  Int: 5
+      rhs:
+        Add:
+          lhs:
+            Mul:
+              lhs:
+                Literal:
+                  Int: 3
+              rhs:
+                Literal:
+                  Int: 1
+          rhs:
+            Mul:
+              lhs:
+                Literal:
+                  Int: 4
+              rhs:
+                Literal:
+                  Int: 5
+- Expression:
+    Literal: "True"
+- Expression:
+    Literal: "False"
+- Expression:
+    Eq:
+      lhs:
+        Gt:
+          lhs:
+            Literal:
+              Int: 3
+          rhs:
+            Literal:
+              Int: 5
+      rhs:
+        Literal: "False"
+- Expression:
+    Eq:
+      lhs:
+        Lt:
+          lhs:
+            Literal:
+              Int: 3
+          rhs:
+            Literal:
+              Int: 5
+      rhs:
+        Literal: "True"
+- Expression:
+    Add:
+      lhs:
+        Add:
+          lhs:
+            Literal:
+              Int: 1
+          rhs:
+            Add:
+              lhs:
+                Literal:
+                  Int: 2
+              rhs:
+                Literal:
+                  Int: 3
+      rhs:
+        Literal:
+          Int: 4
+- Expression:
+    Mul:
+      lhs:
+        Add:
+          lhs:
+            Literal:
+              Int: 5
+          rhs:
+            Literal:
+              Int: 5
+      rhs:
+        Literal:
+          Int: 2
+- Expression:
+    Div:
+      lhs:
+        Literal:
+          Int: 2
+      rhs:
+        Add:
+          lhs:
+            Literal:
+              Int: 5
+          rhs:
+            Literal:
+              Int: 5
+- Expression:
+    Mul:
+      lhs:
+        Mul:
+          lhs:
+            Add:
+              lhs:
+                Literal:
+                  Int: 5
+              rhs:
+                Literal:
+                  Int: 5
+          rhs:
+            Literal:
+              Int: 2
+      rhs:
+        Add:
+          lhs:
+            Literal:
+              Int: 5
+          rhs:
+            Literal:
+              Int: 5
+- Expression:
+    Oposite:
+      Add:
+        lhs:
+          Literal:
+            Int: 5
+        rhs:
+          Literal:
+            Int: 5
+- Expression:
+    Not:
+      Eq:
+        lhs:
+          Literal: "True"
+        rhs:
+          Literal: "True"
+- Expression:
+    Add:
+      lhs:
+        Add:
+          lhs:
+            Identifier: a
+          rhs:
+            Call:
+              arguments:
+                - Mul:
+                    lhs:
+                      Identifier: b
+                    rhs:
+                      Identifier: c
+              function:
+                Left: add
+      rhs:
+        Identifier: d
+- Expression:
+    Call:
+      arguments:
+        - Identifier: a
+        - Identifier: b
+        - Literal:
+            Int: 1
+        - Mul:
+            lhs:
+              Literal:
+                Int: 2
+            rhs:
+              Literal:
+                Int: 3
+        - Add:
+            lhs:
+              Literal:
+                Int: 4
+            rhs:
+              Literal:
+                Int: 5
+        - Call:
+            arguments:
+              - Literal:
+                  Int: 6
+              - Mul:
+                  lhs:
+                    Literal:
+                      Int: 7
+                  rhs:
+                    Literal:
+                      Int: 8
+            function:
+              Left: add
+      function:
+        Left: add
+- Expression:
+    Call:
+      arguments:
+        - Add:
+            lhs:
+              Add:
+                lhs:
+                  Add:
+                    lhs:
+                      Identifier: a
+                    rhs:
+                      Identifier: b
+                rhs:
+                  Div:
+                    lhs:
+                      Mul:
+                        lhs:
+                          Identifier: c
+                        rhs:
+                          Identifier: d
+                    rhs:
+                      Identifier: f
+            rhs:
+              Identifier: g
+      function:
+        Left: add
+

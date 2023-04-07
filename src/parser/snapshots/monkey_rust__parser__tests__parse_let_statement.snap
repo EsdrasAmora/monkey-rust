@@ -1,0 +1,18 @@
+---
+source: src/parser/mod.rs
+expression: program.nodes
+---
+- Let:
+    identifier: x
+    value:
+      Literal: "False"
+- Let:
+    identifier: y
+    value:
+      Literal:
+        Int: 10
+- Let:
+    identifier: foobar
+    value:
+      Literal: "True"
+
