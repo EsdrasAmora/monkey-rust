@@ -1,6 +1,7 @@
 pub(crate) mod ast;
+pub(crate) mod token_parser;
 
-use self::ast::Statement;
+use self::{ast::Statement, token_parser::TokenParser};
 use crate::lexer::Lexer;
 use anyhow::Error;
 
@@ -12,13 +13,13 @@ struct Parser {
 
 impl Parser {
     fn new(lexer: Lexer) -> Self {
-        let mut nodes = Vec::with_capacity(32);
-        let mut errors = Vec::with_capacity(8);
-        let mut tokens = lexer.tokens.into_iter().peekable();
+        let mut nodes = Vec::new();
+        let mut errors = Vec::new();
+        let mut tokens = TokenParser::new(lexer.tokens);
 
         while let Some(current) = tokens.next() {
-            current
-                .parse_statement(&mut tokens)
+            tokens
+                .parse_statement(current)
                 .map_or_else(|err| errors.push(err), |val| nodes.push(val))
         }
 
@@ -28,10 +29,11 @@ impl Parser {
 
 //TODO: not sure if i should keep the expected json's here or in the mocks folder. Maybe I should just use insta (snapshot)?
 //TODO: missing Assign support, only able to declare variables with let but not assign them afterwards;
+//TODO: create error types and think about when to buble them up
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ast::{Expression, Literal};
+    use crate::parser::ast::{Expression, Literal, UnaryExpression};
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use smol_str::SmolStr;
@@ -144,12 +146,16 @@ mod tests {
         assert_eq!(
             program.nodes,
             [
-                Statement::Expression(Box::new(Expression::Oposite(Box::new(
+                Statement::Expression(Box::new(Expression::Oposite(UnaryExpression(Box::new(
                     Literal::Int(1).into()
-                )))),
-                Statement::Expression(Box::new(Expression::Not(Box::new(Literal::Int(5).into())))),
-                Statement::Expression(Box::new(Expression::Not(Box::new(Expression::Not(
-                    Box::new(Expression::Oposite(Box::new(Literal::Int(2).into())))
+                ))))),
+                Statement::Expression(Box::new(Expression::Not(UnaryExpression(Box::new(
+                    Literal::Int(5).into()
+                ))))),
+                Statement::Expression(Box::new(Expression::Not(UnaryExpression(Box::new(
+                    Expression::Not(UnaryExpression(Box::new(Expression::Oposite(
+                        UnaryExpression(Box::new(Literal::Int(2).into()))
+                    ))))
                 )))))
             ]
         )
@@ -194,15 +200,15 @@ mod tests {
             program.nodes,
             [
                 Statement::Let {
-                    identifier: SmolStr::new("x"),
+                    identifier: SmolStr::new("x").into(),
                     value: Box::new(Literal::False.into())
                 },
                 Statement::Let {
-                    identifier: SmolStr::new("y"),
+                    identifier: SmolStr::new("y").into(),
                     value: Box::new(Literal::Int(10).into())
                 },
                 Statement::Let {
-                    identifier: SmolStr::new("foobar"),
+                    identifier: SmolStr::new("foobar").into(),
                     value: Box::new(Literal::True.into())
                 }
             ]

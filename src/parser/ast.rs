@@ -2,10 +2,12 @@ use either::Either;
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
+use crate::lexer::token::Identifier;
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Statement {
     Let {
-        identifier: SmolStr,
+        identifier: Identifier,
         value: Box<Expression>,
     },
     Return(Box<Expression>),
@@ -31,7 +33,8 @@ pub enum Expression {
     Call(CallExpression),
 }
 
-type UnaryExpression = Box<Expression>;
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct UnaryExpression(pub Box<Expression>);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CallExpression {
@@ -41,21 +44,30 @@ pub struct CallExpression {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct FunctionExpression {
-    pub parameters: Option<Vec<SmolStr>>,
-    pub body: Vec<Statement>, //TODO: create body type
+    pub parameters: Option<Vec<Identifier>>,
+    pub body: BlockStatement,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct IfExpression {
     pub condition: Box<Expression>,
-    pub consequence: Vec<Statement>,
-    pub alternative: Option<Vec<Statement>>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BinaryExpression {
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
+pub struct BlockStatement(pub Vec<Statement>);
+
+impl BlockStatement {
+    pub fn new(value: Vec<Statement>) -> Self {
+        Self(value)
+    }
 }
 
 impl Expression {

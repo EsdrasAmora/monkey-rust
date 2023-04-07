@@ -3,6 +3,8 @@ use smol_str::SmolStr;
 use std::iter::Peekable;
 use token::Token;
 
+use self::token::Identifier;
+
 #[derive(Debug)]
 pub struct Lexer {
     pub tokens: Vec<Token>,
@@ -80,7 +82,7 @@ impl Lexer {
                     "else" => Token::Else,
                     "return" => Token::Return,
                     "nil" => Token::Nil,
-                    _ => Token::Identifier(SmolStr::new(&temp)),
+                    _ => Token::Identifier(Identifier::new(SmolStr::new(&temp))),
                 };
 
                 temp.clear();
@@ -139,39 +141,39 @@ mod tests {
             lexer.tokens,
             vec![
                 Token::Let,
-                Token::Identifier(SmolStr::new("five")),
+                Token::Identifier(SmolStr::new("five").into()),
                 Token::Assign,
                 Token::Int(5),
                 Token::Semicolon,
                 Token::Let,
-                Token::Identifier(SmolStr::new("ten")),
+                Token::Identifier(SmolStr::new("ten").into()),
                 Token::Assign,
                 Token::Int(10),
                 Token::Semicolon,
                 Token::Let,
-                Token::Identifier(SmolStr::new("add")),
+                Token::Identifier(SmolStr::new("add").into()),
                 Token::Assign,
                 Token::Function,
                 Token::LParen,
-                Token::Identifier(SmolStr::new("x")),
+                Token::Identifier(SmolStr::new("x").into()),
                 Token::Comma,
-                Token::Identifier(SmolStr::new("y")),
+                Token::Identifier(SmolStr::new("y").into()),
                 Token::RParen,
                 Token::LBrace,
-                Token::Identifier(SmolStr::new("x")),
+                Token::Identifier(SmolStr::new("x").into()),
                 Token::Plus,
-                Token::Identifier(SmolStr::new("y")),
+                Token::Identifier(SmolStr::new("y").into()),
                 Token::Semicolon,
                 Token::RBrace,
                 Token::Semicolon,
                 Token::Let,
-                Token::Identifier(SmolStr::new("result")),
+                Token::Identifier(SmolStr::new("result").into()),
                 Token::Assign,
-                Token::Identifier(SmolStr::new("add")),
+                Token::Identifier(SmolStr::new("add").into()),
                 Token::LParen,
-                Token::Identifier(SmolStr::new("five")),
+                Token::Identifier(SmolStr::new("five").into()),
                 Token::Comma,
-                Token::Identifier(SmolStr::new("ten")),
+                Token::Identifier(SmolStr::new("ten").into()),
                 Token::RParen,
                 Token::Semicolon,
                 Token::Bang,
