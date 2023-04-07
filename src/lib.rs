@@ -1,5 +1,3 @@
-#![allow(dead_code, unused_variables)]
-
 pub(crate) mod ast;
 pub mod lexer;
 pub mod parser;

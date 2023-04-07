@@ -6,13 +6,13 @@ use crate::token_parser;
 use anyhow::Error;
 
 #[derive(Debug)]
-struct Parser {
-    nodes: Vec<Statement>,
-    errors: Vec<Error>,
+pub struct Parser {
+    pub nodes: Vec<Statement>,
+    pub errors: Vec<Error>,
 }
 
 impl Parser {
-    fn new(lexer: Lexer) -> Self {
+    pub fn new(lexer: Lexer) -> Self {
         let mut nodes = Vec::new();
         let mut errors = Vec::new();
         let mut tokens = TokenParser::new(lexer.tokens);
