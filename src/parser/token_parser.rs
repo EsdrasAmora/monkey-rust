@@ -68,7 +68,8 @@ impl TokenParser {
             self.next_if(|x| x != &Token::Semicolon && precedence < x.precedence())
         {
             if let Some(expression_type) = token.binary_expression_type() {
-                let right = self.parse_infix(&token)?;
+                let next = self.try_next()?;
+                let right = self.parse_expression(next, token.precedence())?;
                 //WTF: how can I assign left at the same time it is being moved?
                 left = expression_type(BinaryExpression {
                     lhs: Box::new(left),
@@ -81,7 +82,7 @@ impl TokenParser {
                 let function = match left {
                     Expression::Identifier(name) => Left(name),
                     Expression::Function(function) => Right(function),
-                    _ => bail!("Expected identifier or function but found {:?}", left),
+                    _ => bail!("Expected identifier or function but found {:?}", left), //this unallows for function calls on grouped expressions. eg: (fn(){ return fn(){ return 1; }; }())()
                 };
                 left = Expression::Call(CallExpression {
                     function,
@@ -93,23 +94,6 @@ impl TokenParser {
         }
 
         Ok(left)
-    }
-
-    #[inline]
-    fn try_next(&mut self) -> Result<Token> {
-        self.next()
-            .ok_or(anyhow!("Unexpected end of file, no more tokens"))
-    }
-
-    #[inline]
-    fn try_eat(&mut self, expect: &Token) -> Result<()> {
-        ensure!(
-            self.next_if_eq(expect).is_some(),
-            "Expected token {:?} but found {:?}",
-            expect,
-            self.peek()
-        );
-        Ok(())
     }
 
     #[inline]
@@ -128,13 +112,6 @@ impl TokenParser {
             Token::Function => self.parse_fn_expression(),
             _ => Err(anyhow!("Cannot parse expression starting with {:?}", token)),
         }
-    }
-
-    #[inline]
-    fn parse_infix(&mut self, token: &Token) -> Result<Expression> {
-        let precedence = token.precedence();
-        let next = self.try_next()?;
-        self.parse_expression(next, precedence)
     }
 
     #[inline]
@@ -178,6 +155,25 @@ impl TokenParser {
         }))
     }
 
+    #[inline]
+    fn parse_fn_expression(&mut self) -> Result<Expression> {
+        self.try_eat(&Token::LParen)?;
+
+        let parameters = if self.next_if_eq(&Token::RParen).is_none() {
+            Some(self.parse_function_parameters()?)
+        } else {
+            None
+        };
+
+        self.try_eat(&Token::LBrace)?;
+        let body = self.parse_block()?;
+        Ok(Expression::Function(FunctionExpression {
+            parameters,
+            body,
+        }))
+    }
+
+    #[inline]
     fn parse_block(&mut self) -> Result<BlockStatement> {
         let mut statements = vec![];
 
@@ -189,6 +185,7 @@ impl TokenParser {
         Ok(BlockStatement::new(statements))
     }
 
+    #[inline]
     fn parse_call_arguments(&mut self) -> Result<Option<Vec<Expression>>> {
         if self.next_if_eq(&Token::RParen).is_some() {
             return Ok(None);
@@ -207,23 +204,7 @@ impl TokenParser {
         Ok(Some(arguments))
     }
 
-    fn parse_fn_expression(&mut self) -> Result<Expression> {
-        self.try_eat(&Token::LParen)?;
-
-        let parameters = if self.next_if_eq(&Token::RParen).is_none() {
-            Some(self.parse_function_parameters()?)
-        } else {
-            None
-        };
-
-        self.try_eat(&Token::LBrace)?;
-        let body = self.parse_block()?;
-        Ok(Expression::Function(FunctionExpression {
-            parameters,
-            body,
-        }))
-    }
-
+    #[inline]
     fn parse_function_parameters(&mut self) -> Result<Vec<Identifier>> {
         let mut parameters = vec![];
         parameters.push(self.try_next()?.try_into()?);
@@ -234,5 +215,22 @@ impl TokenParser {
 
         self.try_eat(&Token::RParen)?;
         Ok(parameters)
+    }
+
+    #[inline]
+    fn try_next(&mut self) -> Result<Token> {
+        self.next()
+            .ok_or(anyhow!("Unexpected end of file, no more tokens"))
+    }
+
+    #[inline]
+    fn try_eat(&mut self, expect: &Token) -> Result<()> {
+        ensure!(
+            self.next_if_eq(expect).is_some(),
+            "Expected token {:?} but found {:?}",
+            expect,
+            self.peek()
+        );
+        Ok(())
     }
 }
