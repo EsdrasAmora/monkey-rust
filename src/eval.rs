@@ -1,4 +1,4 @@
-use crate::ast::{BinaryExpression, BlockStatement, Expression, IfExpression, Literal, Statement};
+use crate::ast::{BlockStatement, Expression, IfExpression, Literal, Statement};
 use crate::object::{Environment, Object, NIL};
 use crate::parser::Parser;
 use anyhow::Result;
@@ -6,8 +6,8 @@ use anyhow::Result;
 impl Environment {
     pub fn eval_program(&mut self, parser: Parser) -> Result<Object> {
         let mut result = Object::Nil;
-        for node in parser.nodes {
-            result = node.eval_statement()?;
+        for statement in parser.nodes {
+            result = statement.eval(self)?;
             if let Object::Return(inner) = result {
                 return Ok(*inner);
             }
@@ -17,20 +17,20 @@ impl Environment {
 }
 
 impl Statement {
-    fn eval_statement(self: Statement) -> Result<Object> {
+    fn eval(self: Statement, environment: &mut Environment) -> Result<Object> {
         match self {
             Statement::Let { identifier, value } => todo!(),
-            Statement::Return(exp) => Ok(Object::Return(Box::new(exp.eval()?))),
-            Statement::Expression(exp) => Ok(exp.eval()?),
+            Statement::Return(exp) => Ok(Object::Return(Box::new(exp.eval(environment)?))),
+            Statement::Expression(exp) => Ok(exp.eval(environment)?),
         }
     }
 }
 
 impl BlockStatement {
-    fn eval_block(self) -> Result<Object> {
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
         let mut result = Object::Nil;
-        for node in self.0 {
-            result = node.eval_statement()?;
+        for statement in self.0 {
+            result = statement.eval(environment)?;
             if let Object::Return(_) = result {
                 break;
             }
@@ -40,7 +40,7 @@ impl BlockStatement {
 }
 
 impl Expression {
-    fn eval(self) -> Result<Object> {
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
         Ok(match self {
             Expression::Literal(literal) => match literal {
                 Literal::Int(integer) => Object::Int(integer),
@@ -50,40 +50,57 @@ impl Expression {
                 Literal::Nil => Object::Nil,
             },
             Expression::Identifier(ident) => todo!(),
-            Expression::Oposite(exp) => exp.0.eval()?.oposite()?,
-            Expression::Not(exp) => exp.0.eval()?.not()?,
-            Expression::Eq(exp) => exp.lhs.eval()?.eq(exp.rhs.eval()?).into(),
-            Expression::NotEq(exp) => exp.lhs.eval()?.not_eq(exp.rhs.eval()?).into(),
-            Expression::Lt(exp) => exp.lhs.eval()?.lt(exp.rhs.eval()?).into(),
-            Expression::Lte(exp) => exp.lhs.eval()?.lte(exp.rhs.eval()?).into(),
-            Expression::Gt(exp) => exp.lhs.eval()?.gt(exp.rhs.eval()?).into(),
-            Expression::Gte(exp) => exp.lhs.eval()?.gte(exp.rhs.eval()?).into(),
-            Expression::Add(exp) => exp.lhs.eval()?.add(exp.rhs.eval()?)?,
-            Expression::Sub(exp) => exp.lhs.eval()?.sub(exp.rhs.eval()?)?,
-            Expression::Mul(exp) => exp.lhs.eval()?.mul(exp.rhs.eval()?)?,
-            Expression::Div(exp) => exp.lhs.eval()?.div(exp.rhs.eval()?)?,
-            Expression::If(exp) => exp.eval()?,
+            Expression::Oposite(exp) => exp.0.eval(environment)?.oposite()?,
+            Expression::Not(exp) => exp.0.eval(environment)?.not()?,
+            Expression::Eq(exp) => exp
+                .lhs
+                .eval(environment)?
+                .eq(exp.rhs.eval(environment)?)
+                .into(),
+            Expression::NotEq(exp) => exp
+                .lhs
+                .eval(environment)?
+                .not_eq(exp.rhs.eval(environment)?)
+                .into(),
+            Expression::Lt(exp) => exp
+                .lhs
+                .eval(environment)?
+                .lt(exp.rhs.eval(environment)?)
+                .into(),
+            Expression::Lte(exp) => exp
+                .lhs
+                .eval(environment)?
+                .lte(exp.rhs.eval(environment)?)
+                .into(),
+            Expression::Gt(exp) => exp
+                .lhs
+                .eval(environment)?
+                .gt(exp.rhs.eval(environment)?)
+                .into(),
+            Expression::Gte(exp) => exp
+                .lhs
+                .eval(environment)?
+                .gte(exp.rhs.eval(environment)?)
+                .into(),
+            Expression::Add(exp) => exp.lhs.eval(environment)?.add(exp.rhs.eval(environment)?)?,
+            Expression::Sub(exp) => exp.lhs.eval(environment)?.sub(exp.rhs.eval(environment)?)?,
+            Expression::Mul(exp) => exp.lhs.eval(environment)?.mul(exp.rhs.eval(environment)?)?,
+            Expression::Div(exp) => exp.lhs.eval(environment)?.div(exp.rhs.eval(environment)?)?,
+            Expression::If(if_exp) => if_exp.eval(environment)?,
             Expression::Function(_) => todo!(),
             Expression::Call(_) => todo!(),
         })
     }
 }
 
-impl BinaryExpression {
-    fn eval(self) -> Result<(Object, Object)> {
-        Ok((self.lhs.eval()?, self.rhs.eval()?))
-    }
-}
-
 impl IfExpression {
-    //, environment: &mut Environment
-    fn eval(self) -> Result<Object> {
-        let condition = self.condition.eval()?.into_bool()?;
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
+        let condition = self.condition.eval(environment)?.into_bool()?;
 
         Ok(if condition {
-            self.consequence.eval_block()?
+            self.consequence.eval(environment)?
         } else if let Some(alternative) = self.alternative {
-            alternative.eval_block()?
+            alternative.eval(environment)?
         } else {
             NIL
         })
