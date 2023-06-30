@@ -1,6 +1,6 @@
 use crate::token::{Identifier, Token};
 use smol_str::SmolStr;
-use std::iter::Peekable;
+use std::iter::{self, Peekable};
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -10,26 +10,20 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(input: &str) -> Self {
         let mut chars = input.trim().chars().filter(|x| x.is_ascii()).peekable();
-
-        let mut temp = String::with_capacity(10);
         let mut tokens = Vec::with_capacity(32);
 
-        while let Some(mut char) = chars.next() {
-            while char.is_whitespace() {
-                char = chars.next().expect("Unexpected EOF");
+        while let Some(char) = chars.next() {
+            if char.is_whitespace() {
+                continue;
             }
-            let token = Lexer::new_helper(char, &mut temp, &mut chars);
+            let token = Lexer::new_helper(char, &mut chars);
             tokens.push(token);
         }
 
         Lexer { tokens }
     }
 
-    fn new_helper(
-        char: char,
-        temp: &mut String,
-        chars: &mut Peekable<impl Iterator<Item = char>>,
-    ) -> Token {
+    fn new_helper(char: char, chars: &mut Peekable<impl Iterator<Item = char>>) -> Token {
         match char {
             '+' => Token::Plus,
             ',' => Token::Comma,
@@ -41,36 +35,18 @@ impl Lexer {
             '-' => Token::Minus,
             '*' => Token::Asterisk,
             '/' => Token::Slash,
-            '<' => Token::Lt,
-            '>' => Token::Gt,
-            '=' => {
-                if chars.peek().filter(|x| x == &&'=').is_some() {
-                    chars.next();
-                    Token::Eq
-                } else {
-                    Token::Assign
-                }
-            }
-            '!' => {
-                if chars.peek().filter(|x| x == &&'=').is_some() {
-                    chars.next();
-                    Token::NotEq
-                } else {
-                    Token::Bang
-                }
-            }
+            '<' => chars.next_if_eq(&'=').map_or(Token::Lt, |_| Token::Lte),
+            '>' => chars.next_if_eq(&'=').map_or(Token::Gt, |_| Token::Gte),
+            '=' => chars.next_if_eq(&'=').map_or(Token::Assign, |_| Token::Eq),
+            '!' => chars.next_if_eq(&'=').map_or(Token::Bang, |_| Token::NotEq),
             _ if char.is_ascii_alphabetic() || char == '_' => {
-                temp.push(char);
+                let keyword: SmolStr = iter::once(char)
+                    .chain(iter::from_fn(|| {
+                        chars.next_if(|x| x.is_ascii_alphanumeric() || *x == '_')
+                    }))
+                    .collect();
 
-                while let Some(next_char) = chars
-                    .peek()
-                    .filter(|x| x.is_ascii_alphanumeric() || **x == '_')
-                {
-                    temp.push(*next_char);
-                    chars.next();
-                }
-
-                let token = match temp.as_str() {
+                match keyword.as_str() {
                     "fn" => Token::Function,
                     "let" => Token::Let,
                     "true" => Token::True,
@@ -79,27 +55,14 @@ impl Lexer {
                     "else" => Token::Else,
                     "return" => Token::Return,
                     "nil" => Token::Nil,
-                    _ => Token::Identifier(Identifier::new(SmolStr::new(&temp))),
-                };
-
-                temp.clear();
-                token
-            }
-            _ if char.is_ascii_digit() => {
-                temp.push(char);
-
-                while chars
-                    .peek()
-                    .filter(|x| x.is_ascii_digit())
-                    .map(|x| temp.push(*x))
-                    .is_some()
-                {
-                    chars.next();
+                    _ => Token::Identifier(Identifier::new(keyword)),
                 }
-
-                let clone = std::mem::take(temp);
-                clone.parse().map_or(Token::Illegal, Token::Int)
             }
+            _ if char.is_ascii_digit() => iter::once(char)
+                .chain(iter::from_fn(|| chars.next_if(|x| x.is_ascii_digit())))
+                .collect::<SmolStr>()
+                .parse()
+                .map_or(Token::Illegal, Token::Int),
             _ => Token::Illegal,
         }
     }

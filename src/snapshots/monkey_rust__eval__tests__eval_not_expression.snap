@@ -1,0 +1,13 @@
+---
+source: src/eval.rs
+expression: result
+---
+- Bool: false
+- Bool: true
+- Bool: true
+- Bool: false
+- Bool: false
+- Bool: true
+- Bool: true
+- Bool: false
+

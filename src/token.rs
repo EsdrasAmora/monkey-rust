@@ -22,7 +22,9 @@ pub enum Token {
     Asterisk,
     Slash,
     Lt,
+    Lte,
     Gt,
+    Gte,
     //Delimiters
     Comma,
     Semicolon,
@@ -84,7 +86,7 @@ impl Token {
     pub fn precedence(&self) -> u8 {
         match self {
             Token::Eq | Token::NotEq => 2,
-            Token::Gt | Token::Lt => 3,
+            Token::Gt | Token::Gte | Token::Lt | Token::Lte => 3,
             Token::Plus | Token::Minus => 4,
             Token::Slash | Token::Asterisk => 5,
             Token::LParen => 7,

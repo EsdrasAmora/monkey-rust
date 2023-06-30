@@ -1,0 +1,12 @@
+---
+source: src/eval.rs
+expression: result
+---
+- operator add not supported between types Int(5) and Bool(true)
+- operator add not supported between types Int(5) and Bool(true)
+- operator oposite not supported for type Bool(true)
+- operator add not supported between types Bool(true) and Bool(false)
+- operator add not supported between types Bool(true) and Bool(false)
+- operator add not supported between types Bool(true) and Bool(false)
+- operator add not supported between types Bool(true) and Bool(false)
+

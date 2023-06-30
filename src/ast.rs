@@ -17,16 +17,22 @@ pub enum Statement {
 pub enum Expression {
     Literal(Literal),
     Identifier(SmolStr),
-    Oposite(UnaryExpression),
+
+    //boolean
     Not(UnaryExpression),
     Eq(BinaryExpression),
     NotEq(BinaryExpression),
     Lt(BinaryExpression),
+    Lte(BinaryExpression),
     Gt(BinaryExpression),
+    Gte(BinaryExpression),
+    //aritimetic
+    Oposite(UnaryExpression),
     Add(BinaryExpression),
     Sub(BinaryExpression),
     Mul(BinaryExpression),
     Div(BinaryExpression),
+
     If(IfExpression),
     Function(FunctionExpression),
     Call(CallExpression),
@@ -109,7 +115,9 @@ impl Token {
             Token::Eq => Expression::Eq,
             Token::NotEq => Expression::NotEq,
             Token::Lt => Expression::Lt,
+            Token::Lte => Expression::Lte,
             Token::Gt => Expression::Gt,
+            Token::Gte => Expression::Gte,
             _ => return None,
         })
     }
