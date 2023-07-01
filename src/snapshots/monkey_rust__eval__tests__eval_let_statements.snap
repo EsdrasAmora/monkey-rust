@@ -1,0 +1,9 @@
+---
+source: src/eval.rs
+expression: result
+---
+- Int: 5
+- Int: 25
+- Int: 5
+- Int: 15
+

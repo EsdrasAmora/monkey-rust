@@ -49,9 +49,11 @@ pub struct CallExpression {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct FunctionExpression {
-    pub parameters: Option<Vec<Identifier>>,
+    pub parameters: Parameters,
     pub body: BlockStatement,
 }
+
+pub type Parameters = Option<Vec<Identifier>>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct IfExpression {

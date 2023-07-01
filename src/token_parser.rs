@@ -56,7 +56,7 @@ impl TokenParser {
             }
             _ => {
                 let expression = self.parse_expression(token, 0)?;
-                self.try_eat(&Token::Semicolon)?;
+                self.try_eat(&Token::Semicolon).ok();
                 Ok(Statement::Expression(Box::new(expression)))
             }
         }
@@ -100,7 +100,7 @@ impl TokenParser {
     #[inline]
     fn parse_prefix(&mut self, token: Token) -> Result<Expression> {
         match token {
-            Token::Identifier(name) => Ok(Expression::Identifier(name.into_inner())),
+            Token::Identifier(name) => Ok(Expression::Identifier(name.inner())),
             Token::Int(value) => Ok(Expression::Literal(Literal::Int(value))),
             Token::True => Ok(Literal::True.into()),
             Token::False => Ok(Literal::False.into()),

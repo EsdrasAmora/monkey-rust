@@ -4,9 +4,12 @@ use anyhow::{bail, Error, Result};
 use serde::Serialize;
 use smol_str::SmolStr;
 
-use crate::ast::{self, Expression};
+use crate::{
+    ast::{self, Expression, Parameters},
+    token::Identifier,
+};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub enum Object {
     Nil,
     Int(i64),
@@ -41,28 +44,38 @@ impl Expression {
     pub fn eval_binary_expression(&self) -> () {}
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Environment {
     //TODO: use a faster hashmap
-    store: HashMap<SmolStr, Object>,
-    outer: Option<Box<Environment>>,
+    pub(crate) store: HashMap<SmolStr, Object>,
+    pub(crate) outer: Option<Box<Environment>>,
 }
 
 impl Environment {
-    pub fn new() -> Self {
+    pub fn new(outer: Option<HashMap<SmolStr, Object>>) -> Self {
         Self {
             store: HashMap::new(),
-            outer: None,
+            outer: outer.map(|x| Environment::new(Some(x))).map(Box::new),
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Function {
-    parameters: SmolStr,
+    parameters: Option<Vec<Identifier>>,
     body: ast::BlockStatement,
     env: Environment,
     //global_uniqueFuncIdent_varname
+}
+
+impl Function {
+    pub fn new(parameters: Parameters, body: ast::BlockStatement, env: Environment) -> Self {
+        Self {
+            parameters,
+            body,
+            env,
+        }
+    }
 }
 
 impl Object {

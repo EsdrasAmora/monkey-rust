@@ -50,8 +50,8 @@ impl Identifier {
     }
 
     #[inline]
-    pub fn into_inner(self) -> SmolStr {
-        self.0
+    pub fn inner(&self) -> SmolStr {
+        self.0.clone()
     }
 }
 
@@ -64,13 +64,6 @@ impl TryFrom<Token> for Identifier {
             Token::Identifier(name) => Ok(name),
             _ => Err(anyhow!("Expected identifier but found: {:?}", token)),
         }
-    }
-}
-
-impl From<Identifier> for SmolStr {
-    #[inline]
-    fn from(name: Identifier) -> Self {
-        name.into_inner()
     }
 }
 

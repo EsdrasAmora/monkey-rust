@@ -1,0 +1,19 @@
+---
+source: src/eval.rs
+expression: result
+---
+- Function:
+    parameters:
+      - x
+    body:
+      - Expression:
+          Add:
+            lhs:
+              Identifier: x
+            rhs:
+              Literal:
+                Int: 2
+    env:
+      store: {}
+      outer: ~
+
