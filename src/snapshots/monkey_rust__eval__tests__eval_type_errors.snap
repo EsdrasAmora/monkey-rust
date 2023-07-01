@@ -10,4 +10,5 @@ expression: result
 - operator add not supported between types Bool(true) and Bool(false)
 - operator add not supported between types Bool(true) and Bool(false)
 - Identifier foobar not found
+- Identifier foo already defined
 

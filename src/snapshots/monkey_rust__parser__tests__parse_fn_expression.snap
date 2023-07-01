@@ -4,7 +4,7 @@ expression: program.nodes
 ---
 - Expression:
     Function:
-      parameters: ~
+      parameters: []
       body: []
 - Expression:
     Function:

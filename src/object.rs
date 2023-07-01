@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 
 use anyhow::{bail, Error, Result};
 use serde::Serialize;
 use smol_str::SmolStr;
 
 use crate::{
-    ast::{self, Expression, Parameters},
+    ast::{self, Expression},
     token::Identifier,
 };
 
@@ -47,29 +47,53 @@ impl Expression {
 #[derive(Debug, Serialize, Clone)]
 pub struct Environment {
     //TODO: use a faster hashmap
-    pub(crate) store: HashMap<SmolStr, Object>,
-    pub(crate) outer: Option<Box<Environment>>,
+    curr: HashMap<SmolStr, Object>,
+    outer: Option<Box<Environment>>,
 }
 
 impl Environment {
-    pub fn new(outer: Option<HashMap<SmolStr, Object>>) -> Self {
+    pub fn new() -> Self {
         Self {
-            store: HashMap::new(),
-            outer: outer.map(|x| Environment::new(Some(x))).map(Box::new),
+            curr: HashMap::new(),
+            outer: None,
+        }
+    }
+
+    pub fn new_enclosed(outer: Self, curr: HashMap<SmolStr, Object>) -> Self {
+        Self {
+            curr,
+            outer: Some(Box::new(outer)),
+        }
+    }
+
+    pub fn get(&self, name: &Identifier) -> Option<Object> {
+        self.curr
+            .get(&name.inner())
+            .cloned()
+            .or_else(|| self.outer.as_ref().and_then(|x| x.get(name)))
+    }
+
+    pub fn try_insert(&mut self, ident: &Identifier, value: Object) -> Result<()> {
+        match self.curr.entry(ident.inner()) {
+            Entry::Occupied(_) => bail!("Identifier {ident} already defined"),
+            Entry::Vacant(entry) => {
+                entry.insert(value);
+                Ok(())
+            }
         }
     }
 }
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Function {
-    parameters: Option<Vec<Identifier>>,
-    body: ast::BlockStatement,
-    env: Environment,
+    pub parameters: Vec<Identifier>,
+    pub body: ast::BlockStatement,
+    pub env: Environment,
     //global_uniqueFuncIdent_varname
 }
 
 impl Function {
-    pub fn new(parameters: Parameters, body: ast::BlockStatement, env: Environment) -> Self {
+    pub fn new(parameters: Vec<Identifier>, body: ast::BlockStatement, env: Environment) -> Self {
         Self {
             parameters,
             body,

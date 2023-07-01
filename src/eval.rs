@@ -1,8 +1,10 @@
 use crate::ast::{
-    BlockStatement, Expression, FunctionExpression, IfExpression, Literal, Statement,
+    BlockStatement, CallExpression, Expression, FunctionExpression, IfExpression, Literal,
+    Statement,
 };
 use crate::object::{Environment, Function, Object, NIL};
 use crate::parser::Parser;
+use crate::token::Identifier;
 use anyhow::{anyhow, Result};
 
 impl Environment {
@@ -23,9 +25,7 @@ impl Statement {
         match self {
             Statement::Let { identifier, value } => {
                 let val = value.eval(environment)?;
-                if let Some(ident) = environment.store.insert(identifier.inner(), val) {
-                    return Err(anyhow!("Identifier {ident:?} already defined"));
-                }
+                environment.try_insert(&identifier, val)?;
                 Ok(NIL)
             }
             Statement::Return(exp) => Ok(Object::Return(Box::new(exp.eval(environment)?))),
@@ -57,12 +57,7 @@ impl Expression {
                 Literal::String(string) => Object::String(string),
                 Literal::Nil => Object::Nil,
             },
-            //FIXME: remove clonnning
-            Expression::Identifier(ident) => environment
-                .store
-                .get(&ident)
-                .ok_or(anyhow!("Identifier {ident} not found"))?
-                .to_owned(),
+            Expression::Identifier(ident) => ident.eval(environment)?,
             Expression::Oposite(exp) => exp.0.eval(environment)?.oposite()?,
             Expression::Not(exp) => exp.0.eval(environment)?.not()?,
             Expression::Eq(exp) => exp
@@ -101,8 +96,56 @@ impl Expression {
             Expression::Div(exp) => exp.lhs.eval(environment)?.div(exp.rhs.eval(environment)?)?,
             Expression::If(if_exp) => if_exp.eval(environment)?,
             Expression::Function(fn_exp) => fn_exp.eval(environment)?,
-            Expression::Call(_) => todo!(),
+            Expression::Call(call_exp) => call_exp.eval(environment)?,
         })
+    }
+}
+
+impl Identifier {
+    //FIXME: remove clone
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
+        Ok(environment
+            .get(&self)
+            .ok_or(anyhow!("Identifier {} not found", self.inner()))?
+            .to_owned())
+    }
+}
+
+impl CallExpression {
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
+        let object = match self.function {
+            either::Either::Left(ident) => ident.eval(environment)?,
+            either::Either::Right(func) => func.eval(environment)?,
+        };
+
+        match object {
+            Object::Function(function) => {
+                let args = self
+                    .arguments
+                    .into_iter()
+                    .map(|x| x.eval(environment))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                let mut extended_env = Environment::new_enclosed(
+                    //FIXME: remove clone
+                    function.env.clone(),
+                    function
+                        .parameters
+                        .into_iter()
+                        .map(|x| x.inner())
+                        .zip(args)
+                        .collect(),
+                );
+                function.body.eval(&mut extended_env)
+            }
+            value => Err(anyhow!("expected a function, found: {value:?}")),
+        }
+    }
+}
+
+impl Function {
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
+        Ok(Object::Function(self))
     }
 }
 
@@ -111,7 +154,7 @@ impl FunctionExpression {
         Ok(Object::Function(Function::new(
             self.parameters,
             self.body,
-            //FIXME: cloneee
+            //FIXME: remove clone
             environment.clone(),
         )))
     }
@@ -141,7 +184,7 @@ mod tests {
     fn parse_program(input: &str) -> Object {
         let lexer = Lexer::new(input);
         let parser = Parser::new(lexer);
-        let mut environment = Environment::new(None);
+        let mut environment = Environment::new();
 
         environment.eval_program(parser).unwrap()
     }
@@ -247,6 +290,47 @@ mod tests {
     }
 
     #[test]
+    fn eval_function_call() {
+        let input = [
+            "let identity = fn(x) { x; }; identity(5);",
+            "let identity = fn(x) { return x; }; identity(5);",
+            "let double = fn(x) { x * 2; }; double(5);",
+            "let add = fn(x, y) { x + y; }; add(5, 5);",
+            "let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));",
+            "fn(x) { x; }(5)",
+        ];
+
+        let result = parse_test_input(input.as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_closure() {
+        let input = [
+            "
+            let newAdder = fn(x) {fn(y) { x + y };};
+            let addTwo = newAdder(2);
+            addTwo(2);
+            ",
+            "
+            let newAdder = fn(x) {fn(y) { x + y };};
+            let addTwo = newAdder(2);
+            let addEight = newAdder(8);
+            let addTen = fn(x) { addTwo(addEight(x)) };
+            addTen(5);
+            ",
+            "
+            let add = fn(a, b) { a + b };
+            let applyFunc = fn(a, b, func) { func(a, b) };
+            applyFunc(10, 2, add);
+            ",
+        ];
+
+        let result = parse_test_input(input.as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
     fn eval_type_errors() {
         let input = [
             "5 + true;",
@@ -262,6 +346,7 @@ mod tests {
                 return 1;
             };",
             "foobar;",
+            "let foo = 3; let foo = 4;",
         ];
 
         let result: Vec<String> = input
@@ -269,7 +354,7 @@ mod tests {
             .flat_map(|x| {
                 let lexer = Lexer::new(x);
                 let parser = Parser::new(lexer);
-                let mut environment = Environment::new(None);
+                let mut environment = Environment::new();
                 let val = environment.eval_program(parser);
                 match val {
                     Ok(val) => None,

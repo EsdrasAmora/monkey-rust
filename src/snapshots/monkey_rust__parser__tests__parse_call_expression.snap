@@ -4,7 +4,7 @@ expression: program.nodes
 ---
 - Expression:
     Call:
-      arguments: ~
+      arguments: []
       function:
         Left: myFn
 - Expression:
@@ -42,16 +42,16 @@ expression: program.nodes
     Call:
       arguments:
         - Function:
-            parameters: ~
+            parameters: []
             body: []
       function:
         Left: myFn
 - Expression:
     Call:
-      arguments: ~
+      arguments: []
       function:
         Right:
-          parameters: ~
+          parameters: []
           body: []
 - Expression:
     Call:

@@ -13,10 +13,11 @@ pub enum Statement {
     Expression(Box<Expression>),
 }
 
+//make BinaryExpression an enum of tuples
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expression {
     Literal(Literal),
-    Identifier(SmolStr),
+    Identifier(Identifier),
 
     //boolean
     Not(UnaryExpression),
@@ -43,17 +44,15 @@ pub struct UnaryExpression(pub Box<Expression>);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct CallExpression {
-    pub arguments: Option<Vec<Expression>>,
-    pub function: Either<SmolStr, FunctionExpression>,
+    pub arguments: Vec<Expression>,
+    pub function: Either<Identifier, FunctionExpression>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct FunctionExpression {
-    pub parameters: Parameters,
+    pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
 }
-
-pub type Parameters = Option<Vec<Identifier>>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct IfExpression {

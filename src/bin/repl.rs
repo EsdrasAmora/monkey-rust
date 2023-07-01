@@ -8,7 +8,7 @@ use monkey_rust::{
 
 fn main() -> anyhow::Result<()> {
     let lines = io::stdin().lock().lines();
-    let mut environment = object::Environment::new(None);
+    let mut environment = object::Environment::new();
     for line in lines {
         let line = line.expect("Unable to read line from stdin");
 

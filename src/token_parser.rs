@@ -80,6 +80,7 @@ impl TokenParser {
             }
 
             if matches!(token, Token::LParen) {
+                //TODO: allow any expression here, defer the check to the eval stage
                 let function = match left {
                     Expression::Identifier(name) => Left(name),
                     Expression::Function(function) => Right(function),
@@ -100,7 +101,7 @@ impl TokenParser {
     #[inline]
     fn parse_prefix(&mut self, token: Token) -> Result<Expression> {
         match token {
-            Token::Identifier(name) => Ok(Expression::Identifier(name.inner())),
+            Token::Identifier(name) => Ok(Expression::Identifier(name)),
             Token::Int(value) => Ok(Expression::Literal(Literal::Int(value))),
             Token::True => Ok(Literal::True.into()),
             Token::False => Ok(Literal::False.into()),
@@ -159,13 +160,7 @@ impl TokenParser {
     #[inline]
     fn parse_fn_expression(&mut self) -> Result<Expression> {
         self.try_eat(&Token::LParen)?;
-
-        let parameters = if self.next_if_eq(&Token::RParen).is_none() {
-            Some(self.parse_function_parameters()?)
-        } else {
-            None
-        };
-
+        let parameters = self.parse_function_parameters()?;
         self.try_eat(&Token::LBrace)?;
         let body = self.parse_block()?;
         Ok(Expression::Function(FunctionExpression {
@@ -187,12 +182,12 @@ impl TokenParser {
     }
 
     #[inline]
-    fn parse_call_arguments(&mut self) -> Result<Option<Vec<Expression>>> {
+    fn parse_call_arguments(&mut self) -> Result<Vec<Expression>> {
+        let mut arguments = vec![];
         if self.next_if_eq(&Token::RParen).is_some() {
-            return Ok(None);
+            return Ok(arguments);
         }
 
-        let mut arguments = vec![];
         let token = self.try_next()?;
         arguments.push(self.parse_expression(token, 0)?);
 
@@ -202,12 +197,17 @@ impl TokenParser {
         }
 
         self.try_eat(&Token::RParen)?;
-        Ok(Some(arguments))
+        Ok(arguments)
     }
 
     #[inline]
     fn parse_function_parameters(&mut self) -> Result<Vec<Identifier>> {
         let mut parameters = vec![];
+
+        if self.next_if_eq(&Token::RParen).is_some() {
+            return Ok(parameters);
+        }
+
         parameters.push(self.try_next()?.try_into()?);
 
         while self.next_if_eq(&Token::Comma).is_some() {
