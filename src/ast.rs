@@ -12,7 +12,6 @@ pub enum Statement {
     Expression(Box<Expression>),
 }
 
-//TODO: make BinaryExpression an enum of tuples
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expression {
     Literal(Literal),

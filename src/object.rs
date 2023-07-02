@@ -28,6 +28,7 @@ pub static NIL: Object = Object::Nil;
 pub static ZERO: Object = Object::Int(0);
 pub static EMPTY_STRING: Object = Object::String(SmolStr::new_inline(""));
 
+//consider creating custon errors
 fn unary_op_not_supported(op_type: &str, lhs: &Object) -> anyhow::Error {
     anyhow::anyhow!("operator `{}` not supported for value {:?}", op_type, lhs)
 }
@@ -42,12 +43,7 @@ fn binary_op_not_supported(op_type: &str, lhs: &Object, rhs: &Object) -> Error {
 }
 
 fn coercion_not_supported(c_type: &'static str, value: &Object) -> Error {
-    anyhow::anyhow!(
-        "{} coercion unsuported for value {} of type {}",
-        c_type,
-        value,
-        value.as_typeof()
-    )
+    anyhow::anyhow!("{} coercion unsuported for {:?}", c_type, value,)
 }
 
 impl Expression {
