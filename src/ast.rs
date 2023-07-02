@@ -1,5 +1,4 @@
 use crate::token::{Identifier, Token};
-use either::Either;
 use serde::Serialize;
 use smol_str::SmolStr;
 
@@ -13,39 +12,48 @@ pub enum Statement {
     Expression(Box<Expression>),
 }
 
-//make BinaryExpression an enum of tuples
+//TODO: make BinaryExpression an enum of tuples
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expression {
     Literal(Literal),
     Identifier(Identifier),
-
-    //boolean
-    Not(UnaryExpression),
-    Eq(BinaryExpression),
-    NotEq(BinaryExpression),
-    Lt(BinaryExpression),
-    Lte(BinaryExpression),
-    Gt(BinaryExpression),
-    Gte(BinaryExpression),
-    //aritimetic
-    Oposite(UnaryExpression),
-    Add(BinaryExpression),
-    Sub(BinaryExpression),
-    Mul(BinaryExpression),
-    Div(BinaryExpression),
-
+    BinaryExp(BinaryExpression),
+    UnaryExpression(UnaryExpression),
     If(IfExpression),
     Function(FunctionExpression),
     Call(CallExpression),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-pub struct UnaryExpression(pub Box<Expression>);
+pub enum BinaryOperator {
+    Eq,
+    NotEq,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+pub enum UnaryOperator {
+    Not,
+    Oposite,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+pub struct UnaryExpression {
+    pub value: Box<Expression>,
+    pub operator: UnaryOperator,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct CallExpression {
     pub arguments: Vec<Expression>,
-    pub function: Either<Identifier, FunctionExpression>,
+    pub function: Box<Expression>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
@@ -63,6 +71,7 @@ pub struct IfExpression {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct BinaryExpression {
+    pub operator: BinaryOperator,
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
 }
@@ -104,22 +113,20 @@ impl From<Literal> for Expression {
 }
 
 impl Token {
-    // WTF: why I can't wrap each branch using Some()?
-    // implemented this token method here so it does not depend on the ast.
     #[inline]
-    pub fn binary_expression_type(&self) -> Option<fn(BinaryExpression) -> Expression> {
-        Some(match self {
-            Token::Plus => Expression::Add,
-            Token::Minus => Expression::Sub,
-            Token::Slash => Expression::Div,
-            Token::Asterisk => Expression::Mul,
-            Token::Eq => Expression::Eq,
-            Token::NotEq => Expression::NotEq,
-            Token::Lt => Expression::Lt,
-            Token::Lte => Expression::Lte,
-            Token::Gt => Expression::Gt,
-            Token::Gte => Expression::Gte,
+    pub fn binary_expression_type(&self) -> Option<BinaryOperator> {
+        match self {
+            Token::Plus => Some(BinaryOperator::Add),
+            Token::Minus => Some(BinaryOperator::Sub),
+            Token::Slash => Some(BinaryOperator::Div),
+            Token::Asterisk => Some(BinaryOperator::Mul),
+            Token::Eq => Some(BinaryOperator::Eq),
+            Token::NotEq => Some(BinaryOperator::NotEq),
+            Token::Lt => Some(BinaryOperator::Lt),
+            Token::Lte => Some(BinaryOperator::Lte),
+            Token::Gt => Some(BinaryOperator::Gt),
+            Token::Gte => Some(BinaryOperator::Gte),
             _ => return None,
-        })
+        }
     }
 }

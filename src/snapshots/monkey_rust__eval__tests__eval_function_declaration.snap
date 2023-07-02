@@ -7,7 +7,8 @@ expression: result
       - x
     body:
       - Expression:
-          Add:
+          BinaryExp:
+            operator: Add
             lhs:
               Identifier: x
             rhs:

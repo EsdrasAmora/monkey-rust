@@ -3,9 +3,11 @@ source: src/parser.rs
 expression: program.nodes
 ---
 - Expression:
-    Mul:
+    BinaryExp:
+      operator: Mul
       lhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
             Literal:
               Int: 5
@@ -16,12 +18,15 @@ expression: program.nodes
         Literal:
           Int: 5
 - Expression:
-    Oposite:
-      Add:
-        lhs:
-          Literal:
-            Int: 5
-        rhs:
-          Literal:
-            Int: 5
+    UnaryExpression:
+      value:
+        BinaryExp:
+          operator: Add
+          lhs:
+            Literal:
+              Int: 5
+          rhs:
+            Literal:
+              Int: 5
+      operator: Oposite
 

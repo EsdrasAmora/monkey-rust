@@ -1,5 +1,4 @@
-use anyhow::{anyhow, bail, ensure, Result};
-use either::Either::{Left, Right};
+use anyhow::{anyhow, ensure, Result};
 use std::{
     iter::Peekable,
     ops::{Deref, DerefMut},
@@ -9,7 +8,7 @@ use std::{
 use crate::{
     ast::{
         BinaryExpression, BlockStatement, CallExpression, Expression, FunctionExpression,
-        IfExpression, Literal, Statement, UnaryExpression,
+        IfExpression, Literal, Statement, UnaryExpression, UnaryOperator,
     },
     token::{Identifier, Token},
 };
@@ -38,10 +37,11 @@ impl TokenParser {
     pub fn parse_statement(&mut self, token: Token) -> Result<Statement> {
         match token {
             Token::Let => {
-                let identifier = self.try_next()?.try_into()?;
+                let identifier = self.try_next().and_then(TryInto::try_into)?;
                 self.try_eat(&Token::Assign)?;
-                let token = self.try_next()?;
-                let expression = self.parse_expression(token, 0)?;
+                let expression = self
+                    .try_next()
+                    .and_then(|token| self.parse_expression(token, 0))?;
                 self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Let {
                     identifier,
@@ -49,13 +49,15 @@ impl TokenParser {
                 })
             }
             Token::Return => {
-                let token = self.try_next()?;
-                let expression = self.parse_expression(token, 0)?;
+                let expression = self
+                    .try_next()
+                    .and_then(|token| self.parse_expression(token, 0))?;
                 self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Return(Box::new(expression)))
             }
             _ => {
                 let expression = self.parse_expression(token, 0)?;
+                //intentionally ignore the error as the semicolon is optional
                 self.try_eat(&Token::Semicolon).ok();
                 Ok(Statement::Expression(Box::new(expression)))
             }
@@ -68,31 +70,24 @@ impl TokenParser {
         while let Some(token) =
             self.next_if(|x| x != &Token::Semicolon && precedence < x.precedence())
         {
-            if let Some(expression_type) = token.binary_expression_type() {
-                let next = self.try_next()?;
-                let right = self.parse_expression(next, token.precedence())?;
-                //WTF: how can I assign left at the same time it is being moved?
-                left = expression_type(BinaryExpression {
+            if let Some(operator) = token.binary_expression_type() {
+                let right = self
+                    .try_next()
+                    .and_then(|exp| self.parse_expression(exp, token.precedence()))?;
+                left = Expression::BinaryExp(BinaryExpression {
+                    operator,
                     lhs: Box::new(left),
                     rhs: Box::new(right),
                 });
-                continue;
-            }
-
-            if matches!(token, Token::LParen) {
-                //TODO: allow any expression here, defer the check to the eval stage
-                let function = match left {
-                    Expression::Identifier(name) => Left(name),
-                    Expression::Function(function) => Right(function),
-                    _ => bail!("Expected identifier or function but found {:?}", left), //this unallows for function calls on grouped expressions. eg: (fn(){ return fn(){ return 1; }; }())()
-                };
+            } else if matches!(token, Token::LParen) {
+                //WTF: how can I assign left at the same time it is being moved?
                 left = Expression::Call(CallExpression {
-                    function,
+                    function: left.boxed(),
                     arguments: self.parse_call_arguments()?,
                 });
-                continue;
+            } else {
+                break;
             }
-            break;
         }
 
         Ok(left)
@@ -107,8 +102,8 @@ impl TokenParser {
             Token::False => Ok(Literal::False.into()),
             Token::String(value) => Ok(Expression::Literal(Literal::String(value))),
             Token::Nil => Ok(Literal::Nil.into()),
-            Token::Bang => Ok(Expression::Not(self.parse_unary_expression()?)),
-            Token::Minus => Ok(Expression::Oposite(self.parse_unary_expression()?)),
+            Token::Bang => self.parse_unary_expression(UnaryOperator::Not),
+            Token::Minus => self.parse_unary_expression(UnaryOperator::Oposite),
             Token::LParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_fn_expression(),
@@ -118,24 +113,30 @@ impl TokenParser {
 
     #[inline]
     fn parse_grouped_expression(&mut self) -> Result<Expression> {
-        let expression = self.try_next()?;
-        let expression = self.parse_expression(expression, 0)?;
+        let expression = self
+            .try_next()
+            .and_then(|exp| self.parse_expression(exp, 0))?;
         self.try_eat(&Token::RParen)?;
         Ok(expression)
     }
 
     #[inline]
-    fn parse_unary_expression(&mut self) -> Result<UnaryExpression> {
-        let right = self.try_next()?;
-        let right = self.parse_expression(right, 6)?;
-        Ok(UnaryExpression(Box::new(right)))
+    fn parse_unary_expression(&mut self, operator: UnaryOperator) -> Result<Expression> {
+        let exp = self
+            .try_next()
+            .and_then(|token| self.parse_expression(token, 6))?;
+        Ok(Expression::UnaryExpression(UnaryExpression {
+            operator,
+            value: Box::new(exp),
+        }))
     }
 
     #[inline]
     fn parse_if_expression(&mut self) -> Result<Expression> {
         self.try_eat(&Token::LParen)?;
-        let token = self.try_next()?;
-        let condition = self.parse_expression(token, 0)?;
+        let condition = self
+            .try_next()
+            .and_then(|token| self.parse_expression(token, 0))?;
         self.try_eat(&Token::RParen)?;
         self.try_eat(&Token::LBrace)?;
         let consequence = self.parse_block()?;
@@ -188,12 +189,14 @@ impl TokenParser {
             return Ok(arguments);
         }
 
-        let token = self.try_next()?;
-        arguments.push(self.parse_expression(token, 0)?);
+        self.try_next()
+            .and_then(|token| self.parse_expression(token, 0))
+            .map(|exp| arguments.push(exp))?;
 
         while self.next_if_eq(&Token::Comma).is_some() {
-            let token = self.try_next()?;
-            arguments.push(self.parse_expression(token, 0)?);
+            self.try_next()
+                .and_then(|token| self.parse_expression(token, 0))
+                .map(|exp| arguments.push(exp))?
         }
 
         self.try_eat(&Token::RParen)?;

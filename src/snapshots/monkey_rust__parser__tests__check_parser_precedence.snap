@@ -3,82 +3,104 @@ source: src/parser.rs
 expression: program.nodes
 ---
 - Expression:
-    Mul:
+    BinaryExp:
+      operator: Mul
       lhs:
-        Oposite:
-          Identifier: a
+        UnaryExpression:
+          value:
+            Identifier: a
+          operator: Oposite
       rhs:
         Identifier: b
 - Expression:
-    Not:
-      Oposite:
+    UnaryExpression:
+      value:
+        UnaryExpression:
+          value:
+            Identifier: a
+          operator: Oposite
+      operator: Not
+- Expression:
+    BinaryExp:
+      operator: Add
+      lhs:
+        BinaryExp:
+          operator: Add
+          lhs:
+            Identifier: a
+          rhs:
+            Identifier: b
+      rhs:
+        Identifier: c
+- Expression:
+    BinaryExp:
+      operator: Sub
+      lhs:
+        BinaryExp:
+          operator: Add
+          lhs:
+            Identifier: a
+          rhs:
+            Identifier: b
+      rhs:
+        Identifier: c
+- Expression:
+    BinaryExp:
+      operator: Mul
+      lhs:
+        BinaryExp:
+          operator: Mul
+          lhs:
+            Identifier: a
+          rhs:
+            Identifier: b
+      rhs:
+        Identifier: c
+- Expression:
+    BinaryExp:
+      operator: Div
+      lhs:
+        BinaryExp:
+          operator: Mul
+          lhs:
+            Identifier: a
+          rhs:
+            Identifier: b
+      rhs:
+        Identifier: c
+- Expression:
+    BinaryExp:
+      operator: Add
+      lhs:
         Identifier: a
-- Expression:
-    Add:
-      lhs:
-        Add:
-          lhs:
-            Identifier: a
-          rhs:
-            Identifier: b
       rhs:
-        Identifier: c
-- Expression:
-    Sub:
-      lhs:
-        Add:
-          lhs:
-            Identifier: a
-          rhs:
-            Identifier: b
-      rhs:
-        Identifier: c
-- Expression:
-    Mul:
-      lhs:
-        Mul:
-          lhs:
-            Identifier: a
-          rhs:
-            Identifier: b
-      rhs:
-        Identifier: c
-- Expression:
-    Div:
-      lhs:
-        Mul:
-          lhs:
-            Identifier: a
-          rhs:
-            Identifier: b
-      rhs:
-        Identifier: c
-- Expression:
-    Add:
-      lhs:
-        Identifier: a
-      rhs:
-        Div:
+        BinaryExp:
+          operator: Div
           lhs:
             Identifier: b
           rhs:
             Identifier: c
 - Expression:
-    Sub:
+    BinaryExp:
+      operator: Sub
       lhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
-            Add:
+            BinaryExp:
+              operator: Add
               lhs:
                 Identifier: a
               rhs:
-                Mul:
+                BinaryExp:
+                  operator: Mul
                   lhs:
                     Identifier: b
                   rhs:
                     Identifier: c
           rhs:
-            Div:
+            BinaryExp:
+              operator: Div
               lhs:
                 Identifier: d
               rhs:
@@ -86,7 +108,8 @@ expression: program.nodes
       rhs:
         Identifier: f
 - Expression:
-    Add:
+    BinaryExp:
+      operator: Add
       lhs:
         Literal:
           Int: 3
@@ -94,18 +117,23 @@ expression: program.nodes
         Literal:
           Int: 4
 - Expression:
-    Mul:
+    BinaryExp:
+      operator: Mul
       lhs:
-        Oposite:
-          Literal:
-            Int: 5
+        UnaryExpression:
+          value:
+            Literal:
+              Int: 5
+          operator: Oposite
       rhs:
         Literal:
           Int: 5
 - Expression:
-    Eq:
+    BinaryExp:
+      operator: Eq
       lhs:
-        Gt:
+        BinaryExp:
+          operator: Gt
           lhs:
             Literal:
               Int: 5
@@ -113,7 +141,8 @@ expression: program.nodes
             Literal:
               Int: 4
       rhs:
-        Lt:
+        BinaryExp:
+          operator: Lt
           lhs:
             Literal:
               Int: 3
@@ -121,9 +150,11 @@ expression: program.nodes
             Literal:
               Int: 4
 - Expression:
-    NotEq:
+    BinaryExp:
+      operator: NotEq
       lhs:
-        Lt:
+        BinaryExp:
+          operator: Lt
           lhs:
             Literal:
               Int: 5
@@ -131,7 +162,8 @@ expression: program.nodes
             Literal:
               Int: 4
       rhs:
-        Gt:
+        BinaryExp:
+          operator: Gt
           lhs:
             Literal:
               Int: 3
@@ -139,14 +171,17 @@ expression: program.nodes
             Literal:
               Int: 4
 - Expression:
-    Eq:
+    BinaryExp:
+      operator: Eq
       lhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
             Literal:
               Int: 3
           rhs:
-            Mul:
+            BinaryExp:
+              operator: Mul
               lhs:
                 Literal:
                   Int: 4
@@ -154,9 +189,11 @@ expression: program.nodes
                 Literal:
                   Int: 5
       rhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
-            Mul:
+            BinaryExp:
+              operator: Mul
               lhs:
                 Literal:
                   Int: 3
@@ -164,7 +201,8 @@ expression: program.nodes
                 Literal:
                   Int: 1
           rhs:
-            Mul:
+            BinaryExp:
+              operator: Mul
               lhs:
                 Literal:
                   Int: 4
@@ -176,9 +214,11 @@ expression: program.nodes
 - Expression:
     Literal: "False"
 - Expression:
-    Eq:
+    BinaryExp:
+      operator: Eq
       lhs:
-        Gt:
+        BinaryExp:
+          operator: Gt
           lhs:
             Literal:
               Int: 3
@@ -188,9 +228,11 @@ expression: program.nodes
       rhs:
         Literal: "False"
 - Expression:
-    Eq:
+    BinaryExp:
+      operator: Eq
       lhs:
-        Lt:
+        BinaryExp:
+          operator: Lt
           lhs:
             Literal:
               Int: 3
@@ -200,14 +242,17 @@ expression: program.nodes
       rhs:
         Literal: "True"
 - Expression:
-    Add:
+    BinaryExp:
+      operator: Add
       lhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
             Literal:
               Int: 1
           rhs:
-            Add:
+            BinaryExp:
+              operator: Add
               lhs:
                 Literal:
                   Int: 2
@@ -218,9 +263,11 @@ expression: program.nodes
         Literal:
           Int: 4
 - Expression:
-    Mul:
+    BinaryExp:
+      operator: Mul
       lhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
             Literal:
               Int: 5
@@ -231,12 +278,14 @@ expression: program.nodes
         Literal:
           Int: 2
 - Expression:
-    Div:
+    BinaryExp:
+      operator: Div
       lhs:
         Literal:
           Int: 2
       rhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
             Literal:
               Int: 5
@@ -244,11 +293,14 @@ expression: program.nodes
             Literal:
               Int: 5
 - Expression:
-    Mul:
+    BinaryExp:
+      operator: Mul
       lhs:
-        Mul:
+        BinaryExp:
+          operator: Mul
           lhs:
-            Add:
+            BinaryExp:
+              operator: Add
               lhs:
                 Literal:
                   Int: 5
@@ -259,7 +311,8 @@ expression: program.nodes
             Literal:
               Int: 2
       rhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
             Literal:
               Int: 5
@@ -267,37 +320,46 @@ expression: program.nodes
             Literal:
               Int: 5
 - Expression:
-    Oposite:
-      Add:
-        lhs:
-          Literal:
-            Int: 5
-        rhs:
-          Literal:
-            Int: 5
+    UnaryExpression:
+      value:
+        BinaryExp:
+          operator: Add
+          lhs:
+            Literal:
+              Int: 5
+          rhs:
+            Literal:
+              Int: 5
+      operator: Oposite
 - Expression:
-    Not:
-      Eq:
-        lhs:
-          Literal: "True"
-        rhs:
-          Literal: "True"
+    UnaryExpression:
+      value:
+        BinaryExp:
+          operator: Eq
+          lhs:
+            Literal: "True"
+          rhs:
+            Literal: "True"
+      operator: Not
 - Expression:
-    Add:
+    BinaryExp:
+      operator: Add
       lhs:
-        Add:
+        BinaryExp:
+          operator: Add
           lhs:
             Identifier: a
           rhs:
             Call:
               arguments:
-                - Mul:
+                - BinaryExp:
+                    operator: Mul
                     lhs:
                       Identifier: b
                     rhs:
                       Identifier: c
               function:
-                Left: add
+                Identifier: add
       rhs:
         Identifier: d
 - Expression:
@@ -307,14 +369,16 @@ expression: program.nodes
         - Identifier: b
         - Literal:
             Int: 1
-        - Mul:
+        - BinaryExp:
+            operator: Mul
             lhs:
               Literal:
                 Int: 2
             rhs:
               Literal:
                 Int: 3
-        - Add:
+        - BinaryExp:
+            operator: Add
             lhs:
               Literal:
                 Int: 4
@@ -325,7 +389,8 @@ expression: program.nodes
             arguments:
               - Literal:
                   Int: 6
-              - Mul:
+              - BinaryExp:
+                  operator: Mul
                   lhs:
                     Literal:
                       Int: 7
@@ -333,25 +398,30 @@ expression: program.nodes
                     Literal:
                       Int: 8
             function:
-              Left: add
+              Identifier: add
       function:
-        Left: add
+        Identifier: add
 - Expression:
     Call:
       arguments:
-        - Add:
+        - BinaryExp:
+            operator: Add
             lhs:
-              Add:
+              BinaryExp:
+                operator: Add
                 lhs:
-                  Add:
+                  BinaryExp:
+                    operator: Add
                     lhs:
                       Identifier: a
                     rhs:
                       Identifier: b
                 rhs:
-                  Div:
+                  BinaryExp:
+                    operator: Div
                     lhs:
-                      Mul:
+                      BinaryExp:
+                        operator: Mul
                         lhs:
                           Identifier: c
                         rhs:
@@ -361,5 +431,5 @@ expression: program.nodes
             rhs:
               Identifier: g
       function:
-        Left: add
+        Identifier: add
 

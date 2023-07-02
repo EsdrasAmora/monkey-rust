@@ -6,7 +6,7 @@ expression: program.nodes
     Call:
       arguments: []
       function:
-        Left: myFn
+        Identifier: myFn
 - Expression:
     Call:
       arguments:
@@ -15,29 +15,33 @@ expression: program.nodes
         - Literal:
             Int: 2
       function:
-        Left: myFn
+        Identifier: myFn
 - Expression:
     Call:
       arguments:
         - Literal:
             Int: 1
-        - Mul:
+        - BinaryExp:
+            operator: Mul
             lhs:
               Literal:
                 Int: 2
             rhs:
               Literal:
                 Int: 3
-        - Add:
+        - BinaryExp:
+            operator: Add
             lhs:
-              Oposite:
-                Literal:
-                  Int: 4
+              UnaryExpression:
+                value:
+                  Literal:
+                    Int: 4
+                operator: Oposite
             rhs:
               Literal:
                 Int: 5
       function:
-        Left: myFn
+        Identifier: myFn
 - Expression:
     Call:
       arguments:
@@ -45,12 +49,12 @@ expression: program.nodes
             parameters: []
             body: []
       function:
-        Left: myFn
+        Identifier: myFn
 - Expression:
     Call:
       arguments: []
       function:
-        Right:
+        Function:
           parameters: []
           body: []
 - Expression:
@@ -59,22 +63,24 @@ expression: program.nodes
         - Literal:
             Int: 1
       function:
-        Right:
+        Function:
           parameters:
             - x
           body:
             - Return:
                 Identifier: x
 - Expression:
-    Oposite:
-      Call:
-        arguments:
-          - Literal:
-              Int: 1
-          - Literal:
-              Int: 2
-        function:
-          Left: myFn
+    UnaryExpression:
+      value:
+        Call:
+          arguments:
+            - Literal:
+                Int: 1
+            - Literal:
+                Int: 2
+          function:
+            Identifier: myFn
+      operator: Oposite
 - Expression:
     Call:
       arguments:
@@ -85,17 +91,18 @@ expression: program.nodes
               - Literal:
                   Int: 2
             function:
-              Right:
+              Function:
                 parameters:
                   - a
                   - b
                 body:
                   - Return:
-                      Add:
+                      BinaryExp:
+                        operator: Add
                         lhs:
                           Identifier: a
                         rhs:
                           Identifier: b
       function:
-        Left: myFn
+        Identifier: myFn
 

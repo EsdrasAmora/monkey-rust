@@ -10,7 +10,7 @@ pub enum Token {
     Identifier(Identifier),
     //Literals
     Int(i64),
-    String(SmolStr), // a Cow may would be better here.
+    String(SmolStr),
     True,
     False,
     Nil,
@@ -42,7 +42,6 @@ pub enum Token {
     Return,
 }
 
-//TODO: maybe impl copy for identifier?
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Identifier(SmolStr);
 

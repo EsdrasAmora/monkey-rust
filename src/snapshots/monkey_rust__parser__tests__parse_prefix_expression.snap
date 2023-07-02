@@ -3,17 +3,27 @@ source: src/parser.rs
 expression: program.nodes
 ---
 - Expression:
-    Oposite:
-      Literal:
-        Int: 1
+    UnaryExpression:
+      value:
+        Literal:
+          Int: 1
+      operator: Oposite
 - Expression:
-    Not:
-      Literal:
-        Int: 5
+    UnaryExpression:
+      value:
+        Literal:
+          Int: 5
+      operator: Not
 - Expression:
-    Not:
-      Not:
-        Oposite:
-          Literal:
-            Int: 2
+    UnaryExpression:
+      value:
+        UnaryExpression:
+          value:
+            UnaryExpression:
+              value:
+                Literal:
+                  Int: 2
+              operator: Oposite
+          operator: Not
+      operator: Not
 

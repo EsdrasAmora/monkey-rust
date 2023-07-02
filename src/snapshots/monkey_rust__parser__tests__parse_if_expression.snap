@@ -5,7 +5,8 @@ expression: program.nodes
 - Expression:
     If:
       condition:
-        Lt:
+        BinaryExp:
+          operator: Lt
           lhs:
             Identifier: x
           rhs:

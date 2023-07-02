@@ -1,6 +1,6 @@
 use crate::ast::{
-    BlockStatement, CallExpression, Expression, FunctionExpression, IfExpression, Literal,
-    Statement,
+    BinaryExpression, BinaryOperator, BlockStatement, CallExpression, Expression,
+    FunctionExpression, IfExpression, Literal, Statement, UnaryExpression,
 };
 use crate::object::{Environment, Function, Object, NIL};
 use crate::parser::Parser;
@@ -26,7 +26,7 @@ impl Statement {
             Statement::Let { identifier, value } => {
                 let val = value.eval(environment)?;
                 environment.try_insert(&identifier, val)?;
-                Ok(NIL)
+                Ok(NIL.clone())
             }
             Statement::Return(exp) => Ok(Object::Return(Box::new(exp.eval(environment)?))),
             Statement::Expression(exp) => Ok(exp.eval(environment)?),
@@ -58,46 +58,49 @@ impl Expression {
                 Literal::Nil => Object::Nil,
             },
             Expression::Identifier(ident) => ident.eval(environment)?,
-            Expression::Oposite(exp) => exp.0.eval(environment)?.oposite()?,
-            Expression::Not(exp) => exp.0.eval(environment)?.not()?,
-            Expression::Eq(exp) => exp
-                .lhs
-                .eval(environment)?
-                .eq(exp.rhs.eval(environment)?)
-                .into(),
-            Expression::NotEq(exp) => exp
-                .lhs
-                .eval(environment)?
-                .not_eq(exp.rhs.eval(environment)?)
-                .into(),
-            Expression::Lt(exp) => exp
-                .lhs
-                .eval(environment)?
-                .lt(exp.rhs.eval(environment)?)
-                .into(),
-            Expression::Lte(exp) => exp
-                .lhs
-                .eval(environment)?
-                .lte(exp.rhs.eval(environment)?)
-                .into(),
-            Expression::Gt(exp) => exp
-                .lhs
-                .eval(environment)?
-                .gt(exp.rhs.eval(environment)?)
-                .into(),
-            Expression::Gte(exp) => exp
-                .lhs
-                .eval(environment)?
-                .gte(exp.rhs.eval(environment)?)
-                .into(),
-            Expression::Add(exp) => exp.lhs.eval(environment)?.add(exp.rhs.eval(environment)?)?,
-            Expression::Sub(exp) => exp.lhs.eval(environment)?.sub(exp.rhs.eval(environment)?)?,
-            Expression::Mul(exp) => exp.lhs.eval(environment)?.mul(exp.rhs.eval(environment)?)?,
-            Expression::Div(exp) => exp.lhs.eval(environment)?.div(exp.rhs.eval(environment)?)?,
+            Expression::UnaryExpression(exp) => exp.eval(environment)?,
+            Expression::BinaryExp(bin_exp) => bin_exp.eval(environment)?,
             Expression::If(if_exp) => if_exp.eval(environment)?,
             Expression::Function(fn_exp) => fn_exp.eval(environment)?,
             Expression::Call(call_exp) => call_exp.eval(environment)?,
         })
+    }
+}
+
+impl UnaryExpression {
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
+        let result = self.value.eval(environment)?;
+        match self.operator {
+            crate::ast::UnaryOperator::Not => result.not(),
+            crate::ast::UnaryOperator::Oposite => result.oposite(),
+        }
+    }
+}
+
+impl BinaryExpression {
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
+        let operator_fn = self.operator.eval();
+        Ok(operator_fn(
+            self.lhs.eval(environment)?,
+            self.rhs.eval(environment)?,
+        )?)
+    }
+}
+
+impl BinaryOperator {
+    fn eval(&self) -> fn(Object, Object) -> Result<Object> {
+        match self {
+            BinaryOperator::Eq => |x, y| Ok(Object::eq(x, y).into()),
+            BinaryOperator::NotEq => |x, y| Ok(Object::not_eq(x, y).into()),
+            BinaryOperator::Lt => |x, y| Ok(Object::lt(x, y).into()),
+            BinaryOperator::Lte => |x, y| Ok(Object::lte(x, y).into()),
+            BinaryOperator::Gt => |x, y| Ok(Object::gt(x, y).into()),
+            BinaryOperator::Gte => |x, y| Ok(Object::gte(x, y).into()),
+            BinaryOperator::Add => Object::add,
+            BinaryOperator::Sub => Object::sub,
+            BinaryOperator::Mul => Object::mul,
+            BinaryOperator::Div => Object::div,
+        }
     }
 }
 
@@ -113,12 +116,7 @@ impl Identifier {
 
 impl CallExpression {
     fn eval(self, environment: &mut Environment) -> Result<Object> {
-        let object = match self.function {
-            either::Either::Left(ident) => ident.eval(environment)?,
-            either::Either::Right(func) => func.eval(environment)?,
-        };
-
-        match object {
+        match self.function.eval(environment)? {
             Object::Function(function) => {
                 let args = self
                     .arguments
@@ -138,7 +136,7 @@ impl CallExpression {
                 );
                 function.body.eval(&mut extended_env)
             }
-            value => Err(anyhow!("expected a function, found: {value:?}")),
+            value => Err(anyhow!("expected a function, found: {value}")),
         }
     }
 }
@@ -169,7 +167,7 @@ impl IfExpression {
         } else if let Some(alternative) = self.alternative {
             alternative.eval(environment)?
         } else {
-            NIL
+            NIL.clone()
         })
     }
 }

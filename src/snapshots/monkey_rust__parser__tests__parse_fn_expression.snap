@@ -21,9 +21,11 @@ expression: program.nodes
         - z
       body:
         - Return:
-            Add:
+            BinaryExp:
+              operator: Add
               lhs:
-                Add:
+                BinaryExp:
+                  operator: Add
                   lhs:
                     Identifier: x
                   rhs:

@@ -3,7 +3,8 @@ source: src/parser.rs
 expression: program.nodes
 ---
 - Expression:
-    Add:
+    BinaryExp:
+      operator: Add
       lhs:
         Literal:
           Int: 5
@@ -11,7 +12,8 @@ expression: program.nodes
         Literal:
           Int: 5
 - Expression:
-    Sub:
+    BinaryExp:
+      operator: Sub
       lhs:
         Literal:
           Int: 5
@@ -19,7 +21,8 @@ expression: program.nodes
         Literal:
           Int: 5
 - Expression:
-    Mul:
+    BinaryExp:
+      operator: Mul
       lhs:
         Literal:
           Int: 5
@@ -27,7 +30,8 @@ expression: program.nodes
         Literal:
           Int: 5
 - Expression:
-    Div:
+    BinaryExp:
+      operator: Div
       lhs:
         Literal:
           Int: 5
@@ -35,7 +39,8 @@ expression: program.nodes
         Literal:
           Int: 5
 - Expression:
-    Gt:
+    BinaryExp:
+      operator: Gt
       lhs:
         Literal:
           Int: 5
@@ -43,7 +48,8 @@ expression: program.nodes
         Literal:
           Int: 5
 - Expression:
-    Lt:
+    BinaryExp:
+      operator: Lt
       lhs:
         Literal:
           Int: 5
@@ -51,7 +57,8 @@ expression: program.nodes
         Literal:
           Int: 5
 - Expression:
-    Eq:
+    BinaryExp:
+      operator: Eq
       lhs:
         Literal:
           Int: 5
@@ -59,7 +66,8 @@ expression: program.nodes
         Literal:
           Int: 5
 - Expression:
-    NotEq:
+    BinaryExp:
+      operator: NotEq
       lhs:
         Literal:
           Int: 5

@@ -27,8 +27,6 @@ impl Parser {
     }
 }
 
-//TODO: missing reassign support, only able to declare variables with let but not reassign them afterwards;
-//TODO: create error types and think about when to buble them up
 #[cfg(test)]
 mod tests {
     use super::*;
