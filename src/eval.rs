@@ -69,38 +69,29 @@ impl Expression {
 
 impl UnaryExpression {
     fn eval(self, environment: &mut Environment) -> Result<Object> {
-        let result = self.value.eval(environment)?;
-        match self.operator {
-            crate::ast::UnaryOperator::Not => result.not(),
-            crate::ast::UnaryOperator::Oposite => result.oposite(),
-        }
+        let operand = self.value.eval(environment)?;
+        Ok(match self.operator {
+            crate::ast::UnaryOperator::Not => operand.not()?,
+            crate::ast::UnaryOperator::Minus => operand.minus()?,
+        })
     }
 }
 
 impl BinaryExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        let operator_fn = self.operator.eval();
-        Ok(operator_fn(
-            self.lhs.eval(environment)?,
-            self.rhs.eval(environment)?,
-        )?)
-    }
-}
-
-impl BinaryOperator {
-    fn eval(&self) -> fn(Object, Object) -> Result<Object> {
-        match self {
-            BinaryOperator::Eq => |x, y| Ok(Object::eq(x, y).into()),
-            BinaryOperator::NotEq => |x, y| Ok(Object::not_eq(x, y).into()),
-            BinaryOperator::Lt => |x, y| Ok(Object::lt(x, y).into()),
-            BinaryOperator::Lte => |x, y| Ok(Object::lte(x, y).into()),
-            BinaryOperator::Gt => |x, y| Ok(Object::gt(x, y).into()),
-            BinaryOperator::Gte => |x, y| Ok(Object::gte(x, y).into()),
-            BinaryOperator::Add => Object::add,
-            BinaryOperator::Sub => Object::sub,
-            BinaryOperator::Mul => Object::mul,
-            BinaryOperator::Div => Object::div,
-        }
+    fn eval(self, env: &mut Environment) -> Result<Object> {
+        let (lhs, rhs) = (self.lhs.eval(env)?, self.rhs.eval(env)?);
+        Ok(match self.operator {
+            BinaryOperator::Eq => lhs.eq(rhs).into(),
+            BinaryOperator::NotEq => lhs.not_eq(rhs).into(),
+            BinaryOperator::Lt => lhs.lt(rhs).into(),
+            BinaryOperator::Lte => lhs.lte(rhs).into(),
+            BinaryOperator::Gt => lhs.gt(rhs).into(),
+            BinaryOperator::Gte => lhs.gte(rhs).into(),
+            BinaryOperator::Add => lhs.add(rhs)?,
+            BinaryOperator::Sub => lhs.sub(rhs)?,
+            BinaryOperator::Mul => lhs.mul(rhs)?,
+            BinaryOperator::Div => lhs.div(rhs)?,
+        })
     }
 }
 

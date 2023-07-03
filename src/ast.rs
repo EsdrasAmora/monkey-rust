@@ -40,7 +40,7 @@ pub enum BinaryOperator {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum UnaryOperator {
     Not,
-    Oposite,
+    Minus,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]

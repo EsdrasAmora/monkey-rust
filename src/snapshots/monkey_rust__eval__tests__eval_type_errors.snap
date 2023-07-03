@@ -2,13 +2,13 @@
 source: src/eval.rs
 expression: result
 ---
-- "operator `add` not supported between values Int(5) and Bool(true)"
-- "operator `add` not supported between values Int(5) and Bool(true)"
-- "operator `oposite` not supported for value Bool(true)"
-- "operator `add` not supported between values Bool(true) and Bool(false)"
-- "operator `add` not supported between values Bool(true) and Bool(false)"
-- "operator `add` not supported between values Bool(true) and Bool(false)"
-- "operator `add` not supported between values Bool(true) and Bool(false)"
+- "operator `Add` not supported between values Int(5) and Bool(true)"
+- "operator `Add` not supported between values Int(5) and Bool(true)"
+- "operator `Minus` not supported for value Bool(true)"
+- "operator `Add` not supported between values Bool(true) and Bool(false)"
+- "operator `Add` not supported between values Bool(true) and Bool(false)"
+- "operator `Add` not supported between values Bool(true) and Bool(false)"
+- "operator `Add` not supported between values Bool(true) and Bool(false)"
 - Identifier foobar not found
 - Identifier foo already defined
 

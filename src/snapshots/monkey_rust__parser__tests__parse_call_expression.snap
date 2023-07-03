@@ -36,7 +36,7 @@ expression: program.nodes
                 value:
                   Literal:
                     Int: 4
-                operator: Oposite
+                operator: Minus
             rhs:
               Literal:
                 Int: 5
@@ -80,7 +80,7 @@ expression: program.nodes
                 Int: 2
           function:
             Identifier: myFn
-      operator: Oposite
+      operator: Minus
 - Expression:
     Call:
       arguments:

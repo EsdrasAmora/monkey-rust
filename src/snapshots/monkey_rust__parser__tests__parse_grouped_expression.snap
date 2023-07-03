@@ -28,5 +28,5 @@ expression: program.nodes
           rhs:
             Literal:
               Int: 5
-      operator: Oposite
+      operator: Minus
 

@@ -3,12 +3,12 @@ use std::{
     fmt::Display,
 };
 
-use anyhow::{bail, Error, Result};
 use serde::Serialize;
 use smol_str::SmolStr;
+use thiserror::Error;
 
 use crate::{
-    ast::{self, Expression},
+    ast::{BinaryOperator, BlockStatement, UnaryOperator},
     token::Identifier,
 };
 
@@ -22,38 +22,36 @@ pub enum Object {
     Return(Box<Object>),
 }
 
+type Result<T> = std::result::Result<T, EvalError>;
+
 pub static TRUE: Object = Object::Bool(true);
 pub static FALSE: Object = Object::Bool(false);
 pub static NIL: Object = Object::Nil;
 pub static ZERO: Object = Object::Int(0);
 pub static EMPTY_STRING: Object = Object::String(SmolStr::new_inline(""));
 
-//consider creating custon errors
-fn unary_op_not_supported(op_type: &str, lhs: &Object) -> anyhow::Error {
-    anyhow::anyhow!("operator `{}` not supported for value {:?}", op_type, lhs)
-}
-
-fn binary_op_not_supported(op_type: &str, lhs: &Object, rhs: &Object) -> Error {
-    anyhow::anyhow!(
-        "operator `{}` not supported between values {:?} and {:?}",
-        op_type,
-        lhs,
-        rhs
-    )
-}
-
-fn coercion_not_supported(c_type: &'static str, value: &Object) -> Error {
-    anyhow::anyhow!("{} coercion unsuported for {:?}", c_type, value,)
-}
-
-impl Expression {
-    #[inline]
-    pub fn eval_binary_expression(&self) -> () {}
+#[derive(Error, Debug)]
+pub enum EvalError {
+    #[error("operator `{operator:?}` not supported for value {operand:?}")]
+    UnaryOpError {
+        operator: UnaryOperator,
+        operand: Object,
+    },
+    #[error("operator `{operator:?}` not supported between values {lhs:?} and {rhs:?}")]
+    BinaryOpError {
+        operator: BinaryOperator,
+        lhs: Object,
+        rhs: Object,
+    },
+    #[error("{target} coercion unsuported for {value:?}")]
+    CoercionError { target: &'static str, value: Object },
+    #[error("Identifier {0} already defined")]
+    IdentifierAlreadyDefined(Identifier),
 }
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Environment {
-    //TODO: use a faster hashmap OR an arena
+    //maybe use a vec
     curr: HashMap<SmolStr, Object>,
     outer: Option<Box<Environment>>,
 }
@@ -83,7 +81,7 @@ impl Environment {
 
     pub fn try_insert(&mut self, ident: &Identifier, value: Object) -> Result<()> {
         match self.curr.entry(ident.inner()) {
-            Entry::Occupied(_) => bail!("Identifier {ident} already defined"),
+            Entry::Occupied(_) => Err(EvalError::IdentifierAlreadyDefined(ident.clone())),
             Entry::Vacant(entry) => {
                 entry.insert(value);
                 Ok(())
@@ -95,7 +93,7 @@ impl Environment {
 #[derive(Debug, Serialize, Clone)]
 pub struct Function {
     pub parameters: Vec<Identifier>,
-    pub body: ast::BlockStatement,
+    pub body: BlockStatement,
     pub env: Environment,
 }
 
@@ -125,7 +123,7 @@ impl Display for Object {
 }
 
 impl Function {
-    pub fn new(parameters: Vec<Identifier>, body: ast::BlockStatement, env: Environment) -> Self {
+    pub fn new(parameters: Vec<Identifier>, body: BlockStatement, env: Environment) -> Self {
         Self {
             parameters,
             body,
@@ -151,7 +149,12 @@ impl Object {
             Object::String(str) => str,
             Object::Int(int) => int.to_string().into(),
             Object::Bool(bool) => bool.to_string().into(),
-            other => return Err(coercion_not_supported("string", &other)),
+            other => {
+                return Err(EvalError::CoercionError {
+                    target: EMPTY_STRING.as_typeof(),
+                    value: other,
+                })
+            }
         })
     }
 
@@ -159,8 +162,19 @@ impl Object {
         Ok(match self {
             Object::Int(int) => int,
             Object::Bool(bool) => bool.into(),
-            Object::String(str) => str.parse()?,
-            other => return Err(coercion_not_supported("int", &other)),
+            Object::String(value) => match value.parse() {
+                Ok(int) => int,
+                Err(_) => Err(EvalError::CoercionError {
+                    target: ZERO.as_typeof(),
+                    value: Object::String(value),
+                })?,
+            },
+            other => {
+                return Err(EvalError::CoercionError {
+                    target: ZERO.as_typeof(),
+                    value: other,
+                })
+            }
         })
     }
 
@@ -172,10 +186,10 @@ impl Object {
             Object::String(str) => !str.is_empty(),
             Object::Function(_) => true,
             other => {
-                return Err(coercion_not_supported(
-                    Object::Bool(true).as_typeof(),
-                    &other,
-                ))
+                return Err(EvalError::CoercionError {
+                    target: TRUE.as_typeof(),
+                    value: other,
+                })
             }
         })
     }
@@ -184,10 +198,15 @@ impl Object {
         Ok((!self.into_bool()?).into())
     }
 
-    pub fn oposite(self) -> Result<Object> {
+    pub fn minus(self) -> Result<Object> {
         match self {
             Object::Int(int) => Ok(Object::Int(-int)),
-            obj => Err(unary_op_not_supported("oposite", &obj)),
+            operand => {
+                return Err(EvalError::UnaryOpError {
+                    operator: UnaryOperator::Minus,
+                    operand,
+                })
+            }
         }
     }
 
@@ -197,28 +216,52 @@ impl Object {
             (Object::String(lhs), Object::String(rhs)) => {
                 Object::String(format!("{}{}", lhs, rhs).into())
             }
-            (lhs, rhs) => return Err(binary_op_not_supported("add", &lhs, &rhs)),
+            (lhs, rhs) => {
+                return Err(EvalError::BinaryOpError {
+                    operator: BinaryOperator::Add,
+                    lhs,
+                    rhs,
+                })
+            }
         })
     }
 
     pub fn sub(self, rhs: Object) -> Result<Object> {
         Ok(match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => Object::Int(lhs - rhs),
-            (lhs, rhs) => return Err(binary_op_not_supported("sub", &lhs, &rhs)),
+            (lhs, rhs) => {
+                return Err(EvalError::BinaryOpError {
+                    operator: BinaryOperator::Sub,
+                    lhs,
+                    rhs,
+                })
+            }
         })
     }
 
     pub fn mul(self, rhs: Object) -> Result<Object> {
         Ok(match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => Object::Int(lhs * rhs),
-            (lhs, rhs) => return Err(binary_op_not_supported("mul", &lhs, &rhs)),
+            (lhs, rhs) => {
+                return Err(EvalError::BinaryOpError {
+                    operator: BinaryOperator::Mul,
+                    lhs,
+                    rhs,
+                })
+            }
         })
     }
 
     pub fn div(self, rhs: Object) -> Result<Object> {
         Ok(match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => Object::Int(lhs / rhs),
-            (lhs, rhs) => return Err(binary_op_not_supported("div", &lhs, &rhs)),
+            (lhs, rhs) => {
+                return Err(EvalError::BinaryOpError {
+                    operator: BinaryOperator::Div,
+                    lhs,
+                    rhs,
+                })
+            }
         })
     }
 

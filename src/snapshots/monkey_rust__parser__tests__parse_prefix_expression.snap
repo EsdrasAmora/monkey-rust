@@ -7,7 +7,7 @@ expression: program.nodes
       value:
         Literal:
           Int: 1
-      operator: Oposite
+      operator: Minus
 - Expression:
     UnaryExpression:
       value:
@@ -23,7 +23,7 @@ expression: program.nodes
               value:
                 Literal:
                   Int: 2
-              operator: Oposite
+              operator: Minus
           operator: Not
       operator: Not
 

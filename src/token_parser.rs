@@ -103,7 +103,7 @@ impl TokenParser {
             Token::String(value) => Ok(Expression::Literal(Literal::String(value))),
             Token::Nil => Ok(Literal::Nil.into()),
             Token::Bang => self.parse_unary_expression(UnaryOperator::Not),
-            Token::Minus => self.parse_unary_expression(UnaryOperator::Oposite),
+            Token::Minus => self.parse_unary_expression(UnaryOperator::Minus),
             Token::LParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_fn_expression(),

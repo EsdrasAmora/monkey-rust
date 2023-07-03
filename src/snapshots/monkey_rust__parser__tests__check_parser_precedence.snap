@@ -9,7 +9,7 @@ expression: program.nodes
         UnaryExpression:
           value:
             Identifier: a
-          operator: Oposite
+          operator: Minus
       rhs:
         Identifier: b
 - Expression:
@@ -18,7 +18,7 @@ expression: program.nodes
         UnaryExpression:
           value:
             Identifier: a
-          operator: Oposite
+          operator: Minus
       operator: Not
 - Expression:
     BinaryExp:
@@ -124,7 +124,7 @@ expression: program.nodes
           value:
             Literal:
               Int: 5
-          operator: Oposite
+          operator: Minus
       rhs:
         Literal:
           Int: 5
@@ -330,7 +330,7 @@ expression: program.nodes
           rhs:
             Literal:
               Int: 5
-      operator: Oposite
+      operator: Minus
 - Expression:
     UnaryExpression:
       value:
