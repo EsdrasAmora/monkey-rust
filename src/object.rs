@@ -51,7 +51,7 @@ pub enum EvalError {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Environment {
-    //maybe use a vec
+    //maybe use a single hashmap with the function name as key
     curr: HashMap<SmolStr, Object>,
     outer: Option<Box<Environment>>,
 }
@@ -74,7 +74,7 @@ impl Environment {
     pub fn get(&self, name: &Identifier) -> Option<Object> {
         self.curr
             .get(&name.inner())
-            //FIXME: remove clone
+            //Clone
             .cloned()
             .or_else(|| self.outer.as_ref().and_then(|x| x.get(name)))
     }

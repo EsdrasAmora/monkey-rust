@@ -10,12 +10,12 @@ edition = "2021"
 anyhow = "1.0.70"
 clap = "4.1.13"
 indextree = { version = "4.6.0", features = ["serde"] }
+rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.95"
 smol_str = "0.1.24"
 thiserror = "1.0.40"
-tinyvec = { version = "1.6.0", features = ["serde", "alloc"] }
-typed-arena = "2.0.2"
+
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }

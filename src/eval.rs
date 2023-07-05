@@ -96,12 +96,10 @@ impl BinaryExpression {
 }
 
 impl Identifier {
-    //FIXME: remove clone
     fn eval(self, environment: &mut Environment) -> Result<Object> {
         Ok(environment
             .get(&self)
-            .ok_or(anyhow!("Identifier {} not found", self.inner()))?
-            .to_owned())
+            .ok_or(anyhow!("Identifier {} not found", self.inner()))?)
     }
 }
 
@@ -116,8 +114,7 @@ impl CallExpression {
                     .collect::<Result<Vec<_>, _>>()?;
 
                 let mut extended_env = Environment::new_enclosed(
-                    //FIXME: remove clone
-                    function.env.clone(),
+                    function.env,
                     function
                         .parameters
                         .into_iter()
@@ -143,7 +140,7 @@ impl FunctionExpression {
         Ok(Object::Function(Function::new(
             self.parameters,
             self.body,
-            //FIXME: remove clone
+            //CLONE
             environment.clone(),
         )))
     }
