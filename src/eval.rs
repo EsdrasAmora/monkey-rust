@@ -2,16 +2,17 @@ use crate::ast::{
     BinaryExpression, BinaryOperator, BlockStatement, CallExpression, Expression,
     FunctionExpression, IfExpression, Literal, Statement, UnaryExpression,
 };
-use crate::object::{Environment, Function, Object, NIL};
+use crate::object::{Environment, Function, Object, SharedObject, NIL};
 use crate::parser::Parser;
 use crate::token::Identifier;
 use anyhow::{anyhow, Result};
+use std::borrow::Cow;
 
 impl Environment {
     pub fn eval_program(&mut self, parser: Parser) -> Result<Object> {
         let mut result = Object::Nil;
         for statement in parser.nodes {
-            result = statement.eval(self)?;
+            result = statement.eval(self)?.into_owned();
             if let Object::Return(inner) = result {
                 return Ok(*inner);
             }
@@ -21,42 +22,44 @@ impl Environment {
 }
 
 impl Statement {
-    fn eval(self: Statement, environment: &mut Environment) -> Result<Object> {
-        match self {
+    fn eval(self, environment: &mut Environment) -> Result<SharedObject> {
+        Ok(match self {
             Statement::Let { identifier, value } => {
-                let val = value.eval(environment)?;
-                environment.try_insert(&identifier, val)?;
-                Ok(NIL.clone())
+                let val = value.eval(environment)?.into_owned();
+                environment.try_insert(identifier, val)?;
+                Cow::Owned(NIL.clone())
             }
-            Statement::Return(exp) => Ok(Object::Return(Box::new(exp.eval(environment)?))),
-            Statement::Expression(exp) => Ok(exp.eval(environment)?),
-        }
+            Statement::Return(exp) => Cow::Owned(Object::Return(Box::new(
+                exp.eval(environment)?.into_owned(),
+            ))),
+            Statement::Expression(exp) => exp.eval(environment)?,
+        })
     }
 }
 
 impl BlockStatement {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
+    fn eval(self, mut environment: Environment) -> Result<SharedObject<'static>> {
         let mut result = Object::Nil;
         for statement in self.0 {
-            result = statement.eval(environment)?;
+            result = statement.eval(&mut environment)?.into_owned();
             if let Object::Return(_) = result {
                 break;
             }
         }
-        Ok(result)
+        Ok(Cow::Owned(result))
     }
 }
 
 impl Expression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
+    fn eval(self, environment: &mut Environment) -> Result<SharedObject> {
         Ok(match self {
-            Expression::Literal(literal) => match literal {
+            Expression::Literal(literal) => Cow::Owned(match literal {
                 Literal::Int(integer) => Object::Int(integer),
                 Literal::True => Object::Bool(true),
                 Literal::False => Object::Bool(false),
                 Literal::String(string) => Object::String(string),
                 Literal::Nil => Object::Nil,
-            },
+            }),
             Expression::Identifier(ident) => ident.eval(environment)?,
             Expression::UnaryExpression(exp) => exp.eval(environment)?,
             Expression::BinaryExp(bin_exp) => bin_exp.eval(environment)?,
@@ -68,19 +71,23 @@ impl Expression {
 }
 
 impl UnaryExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
+    fn eval(self, environment: &mut Environment) -> Result<SharedObject> {
         let operand = self.value.eval(environment)?;
         Ok(match self.operator {
-            crate::ast::UnaryOperator::Not => operand.not()?,
-            crate::ast::UnaryOperator::Minus => operand.minus()?,
+            crate::ast::UnaryOperator::Not => Cow::Owned(operand.not()?),
+            crate::ast::UnaryOperator::Minus => Cow::Owned(operand.minus()?),
         })
     }
 }
 
 impl BinaryExpression {
-    fn eval(self, env: &mut Environment) -> Result<Object> {
-        let (lhs, rhs) = (self.lhs.eval(env)?, self.rhs.eval(env)?);
-        Ok(match self.operator {
+    fn eval(self, env: &mut Environment) -> Result<SharedObject> {
+        let (lhs, rhs) = (
+            self.lhs.eval(env)?.into_owned(),
+            self.rhs.eval(env)?.into_owned(),
+        );
+        let (lhs, rhs) = (&lhs, &rhs);
+        Ok(Cow::Owned(match self.operator {
             BinaryOperator::Eq => lhs.eq(rhs).into(),
             BinaryOperator::NotEq => lhs.not_eq(rhs).into(),
             BinaryOperator::Lt => lhs.lt(rhs).into(),
@@ -91,12 +98,12 @@ impl BinaryExpression {
             BinaryOperator::Sub => lhs.sub(rhs)?,
             BinaryOperator::Mul => lhs.mul(rhs)?,
             BinaryOperator::Div => lhs.div(rhs)?,
-        })
+        }))
     }
 }
 
 impl Identifier {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
+    fn eval(self, environment: &mut Environment) -> Result<SharedObject> {
         Ok(environment
             .get(&self)
             .ok_or(anyhow!("Identifier {} not found", self.inner()))?)
@@ -104,16 +111,17 @@ impl Identifier {
 }
 
 impl CallExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        match self.function.eval(environment)? {
+    fn eval(self, environment: &mut Environment) -> Result<SharedObject> {
+        match self.function.eval(environment)?.into_owned() {
             Object::Function(function) => {
+                let function = function.clone();
                 let args = self
                     .arguments
                     .into_iter()
-                    .map(|x| x.eval(environment))
+                    .map(|x| x.eval(environment).map(|y| Cow::Owned(y.into_owned())))
                     .collect::<Result<Vec<_>, _>>()?;
 
-                let mut extended_env = Environment::new_enclosed(
+                let extended_env = Environment::new_enclosed(
                     function.env,
                     function
                         .parameters
@@ -122,7 +130,7 @@ impl CallExpression {
                         .zip(args)
                         .collect(),
                 );
-                function.body.eval(&mut extended_env)
+                Ok(function.body.eval(extended_env)?)
             }
             value => Err(anyhow!("expected a function, found: {value}")),
         }
@@ -130,32 +138,32 @@ impl CallExpression {
 }
 
 impl Function {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        Ok(Object::Function(self))
+    fn eval(self, environment: &mut Environment) -> Result<SharedObject> {
+        Ok(Cow::Owned(Object::Function(self)))
     }
 }
 
 impl FunctionExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        Ok(Object::Function(Function::new(
+    fn eval(self, environment: &mut Environment) -> Result<SharedObject> {
+        Ok(Cow::Owned(Object::Function(Function::new(
             self.parameters,
             self.body,
             //CLONE
             environment.clone(),
-        )))
+        ))))
     }
 }
 
 impl IfExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
+    fn eval(self, environment: &mut Environment) -> Result<SharedObject> {
         let condition = self.condition.eval(environment)?.into_bool()?;
 
         Ok(if condition {
-            self.consequence.eval(environment)?
+            self.consequence.eval(environment.clone())?
         } else if let Some(alternative) = self.alternative {
-            alternative.eval(environment)?
+            alternative.eval(environment.clone())?
         } else {
-            NIL.clone()
+            Cow::Owned(NIL.clone())
         })
     }
 }

@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::{hash_map::Entry, HashMap},
     fmt::Display,
 };
@@ -22,6 +23,7 @@ pub enum Object {
     Return(Box<Object>),
 }
 
+pub type SharedObject<'a> = Cow<'a, Object>;
 type Result<T> = std::result::Result<T, EvalError>;
 
 pub static TRUE: Object = Object::Bool(true);
@@ -52,7 +54,7 @@ pub enum EvalError {
 #[derive(Debug, Serialize, Clone)]
 pub struct Environment {
     //maybe use a single hashmap with the function name as key
-    curr: HashMap<SmolStr, Object>,
+    curr: HashMap<SmolStr, SharedObject<'static>>,
     outer: Option<Box<Environment>>,
 }
 
@@ -64,26 +66,25 @@ impl Environment {
         }
     }
 
-    pub fn new_enclosed(outer: Self, curr: HashMap<SmolStr, Object>) -> Self {
+    pub fn new_enclosed(outer: Self, curr: HashMap<SmolStr, SharedObject<'static>>) -> Self {
         Self {
             curr,
             outer: Some(Box::new(outer)),
         }
     }
 
-    pub fn get(&self, name: &Identifier) -> Option<Object> {
+    pub fn get(&self, name: &Identifier) -> Option<SharedObject> {
         self.curr
             .get(&name.inner())
-            //Clone
             .cloned()
             .or_else(|| self.outer.as_ref().and_then(|x| x.get(name)))
     }
 
-    pub fn try_insert(&mut self, ident: &Identifier, value: Object) -> Result<()> {
+    pub fn try_insert(&mut self, ident: Identifier, value: Object) -> Result<()> {
         match self.curr.entry(ident.inner()) {
             Entry::Occupied(_) => Err(EvalError::IdentifierAlreadyDefined(ident.clone())),
             Entry::Vacant(entry) => {
-                entry.insert(value);
+                entry.insert(Cow::Owned(value));
                 Ok(())
             }
         }
@@ -105,7 +106,7 @@ impl Display for Function {
             .map(|x| x.inner())
             .collect::<Vec<_>>()
             .join(", ");
-        write!(f, "fn({}) {{todo()!}}", params)
+        write!(f, "fn({}){{{:?}}}", params, self.body)
     }
 }
 
@@ -144,73 +145,73 @@ impl Object {
         }
     }
 
-    pub fn into_string(self) -> Result<SmolStr> {
+    pub fn into_string(&self) -> Result<SmolStr> {
         Ok(match self {
-            Object::String(str) => str,
+            Object::String(str) => str.clone(),
             Object::Int(int) => int.to_string().into(),
             Object::Bool(bool) => bool.to_string().into(),
             other => {
                 return Err(EvalError::CoercionError {
                     target: EMPTY_STRING.as_typeof(),
-                    value: other,
+                    value: other.clone(),
                 })
             }
         })
     }
 
-    pub fn into_int(self) -> Result<i64> {
+    pub fn into_int(&self) -> Result<i64> {
         Ok(match self {
-            Object::Int(int) => int,
-            Object::Bool(bool) => bool.into(),
+            Object::Int(int) => int.clone(),
+            Object::Bool(bool) => bool.clone().into(),
             Object::String(value) => match value.parse() {
                 Ok(int) => int,
                 Err(_) => Err(EvalError::CoercionError {
                     target: ZERO.as_typeof(),
-                    value: Object::String(value),
+                    value: Object::String(value.clone()),
                 })?,
             },
             other => {
                 return Err(EvalError::CoercionError {
                     target: ZERO.as_typeof(),
-                    value: other,
+                    value: other.clone(),
                 })
             }
         })
     }
 
-    pub fn into_bool(self) -> Result<bool> {
+    pub fn into_bool(&self) -> Result<bool> {
         Ok(match self {
             Object::Nil => false,
-            Object::Int(int) => int != 0,
-            Object::Bool(bool) => bool,
+            Object::Int(int) => int != &0,
+            Object::Bool(bool) => bool.clone(),
             Object::String(str) => !str.is_empty(),
             Object::Function(_) => true,
             other => {
                 return Err(EvalError::CoercionError {
                     target: TRUE.as_typeof(),
-                    value: other,
+                    value: other.clone(),
                 })
             }
         })
     }
 
-    pub fn not(self) -> Result<Object> {
+    pub fn not(&self) -> Result<Object> {
         Ok((!self.into_bool()?).into())
     }
 
-    pub fn minus(self) -> Result<Object> {
+    pub fn minus(&self) -> Result<Object> {
         match self {
             Object::Int(int) => Ok(Object::Int(-int)),
             operand => {
                 return Err(EvalError::UnaryOpError {
                     operator: UnaryOperator::Minus,
-                    operand,
+                    operand: operand.clone(),
                 })
             }
         }
     }
 
-    pub fn add(self, rhs: Object) -> Result<Object> {
+    pub fn add(&self, rhs: &Object) -> Result<Object> {
         Ok(match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => Object::Int(lhs + rhs),
             (Object::String(lhs), Object::String(rhs)) => {
@@ -219,53 +220,53 @@ impl Object {
             (lhs, rhs) => {
                 return Err(EvalError::BinaryOpError {
                     operator: BinaryOperator::Add,
-                    lhs,
-                    rhs,
+                    lhs: lhs.clone(),
+                    rhs: rhs.clone(),
                 })
             }
         })
     }
 
-    pub fn sub(self, rhs: Object) -> Result<Object> {
+    pub fn sub(&self, rhs: &Object) -> Result<Object> {
         Ok(match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => Object::Int(lhs - rhs),
             (lhs, rhs) => {
                 return Err(EvalError::BinaryOpError {
                     operator: BinaryOperator::Sub,
-                    lhs,
-                    rhs,
+                    lhs: lhs.clone(),
+                    rhs: rhs.clone(),
                 })
             }
         })
     }
 
-    pub fn mul(self, rhs: Object) -> Result<Object> {
+    pub fn mul(&self, rhs: &Object) -> Result<Object> {
         Ok(match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => Object::Int(lhs * rhs),
             (lhs, rhs) => {
                 return Err(EvalError::BinaryOpError {
                     operator: BinaryOperator::Mul,
-                    lhs,
-                    rhs,
+                    lhs: lhs.clone(),
+                    rhs: rhs.clone(),
                 })
             }
         })
     }
 
-    pub fn div(self, rhs: Object) -> Result<Object> {
+    pub fn div(&self, rhs: &Object) -> Result<Object> {
         Ok(match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => Object::Int(lhs / rhs),
             (lhs, rhs) => {
                 return Err(EvalError::BinaryOpError {
                     operator: BinaryOperator::Div,
-                    lhs,
-                    rhs,
+                    lhs: lhs.clone(),
+                    rhs: rhs.clone(),
                 })
             }
         })
     }
 
-    pub fn eq(self, rhs: Object) -> bool {
+    pub fn eq(&self, rhs: &Object) -> bool {
         match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => lhs == rhs,
             (Object::String(lhs), Object::String(rhs)) => lhs == rhs,
@@ -275,32 +276,32 @@ impl Object {
         }
     }
 
-    pub fn not_eq(self, rhs: Object) -> bool {
+    pub fn not_eq(&self, rhs: &Object) -> bool {
         !self.eq(rhs)
     }
 
-    pub fn lt(self, rhs: Object) -> bool {
+    pub fn lt(&self, rhs: &Object) -> bool {
         match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => lhs < rhs,
             _ => false,
         }
     }
 
-    pub fn gt(self, rhs: Object) -> bool {
+    pub fn gt(&self, rhs: &Object) -> bool {
         match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => lhs > rhs,
             _ => false,
         }
     }
 
-    pub fn lte(self, rhs: Object) -> bool {
+    pub fn lte(&self, rhs: &Object) -> bool {
         match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => lhs <= rhs,
             _ => false,
         }
     }
 
-    pub fn gte(self, rhs: Object) -> bool {
+    pub fn gte(&self, rhs: &Object) -> bool {
         match (self, rhs) {
             (Object::Int(lhs), Object::Int(rhs)) => lhs >= rhs,
             _ => false,
