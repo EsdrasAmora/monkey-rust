@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum Token {
     Illegal,
     Identifier(Identifier),
@@ -34,6 +34,8 @@ pub enum Token {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
     //Keywords
     Function,
     Let,
@@ -76,12 +78,12 @@ impl TryFrom<Token> for Identifier {
     }
 }
 
-impl From<SmolStr> for Identifier {
-    #[inline]
-    fn from(name: SmolStr) -> Self {
-        Self::new(name)
-    }
-}
+// impl From<SmolStr> for Identifier {
+//     #[inline]
+//     fn from(name: SmolStr) -> Self {
+//         Self::new(name)
+//     }
+// }
 
 impl Token {
     #[inline]

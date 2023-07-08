@@ -63,6 +63,7 @@ impl Expression {
             Expression::If(if_exp) => if_exp.eval(environment)?,
             Expression::Function(fn_exp) => fn_exp.eval(environment)?,
             Expression::Call(call_exp) => call_exp.eval(environment)?,
+            Expression::ArrayLiteral(_) => todo!(),
         })
     }
 }

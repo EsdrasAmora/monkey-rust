@@ -21,6 +21,7 @@ pub enum Expression {
     If(IfExpression),
     Function(FunctionExpression),
     Call(CallExpression),
+    ArrayLiteral(ArrayLiteral),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
@@ -53,6 +54,15 @@ pub struct UnaryExpression {
 pub struct CallExpression {
     pub arguments: Vec<Expression>,
     pub function: Box<Expression>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+pub struct ArrayLiteral(Vec<Expression>);
+
+impl ArrayLiteral {
+    pub fn new(value: Vec<Expression>) -> Self {
+        Self(value)
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]

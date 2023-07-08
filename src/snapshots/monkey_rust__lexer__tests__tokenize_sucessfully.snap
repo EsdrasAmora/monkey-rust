@@ -1,0 +1,81 @@
+---
+source: src/lexer.rs
+expression: result.tokens
+---
+- Let
+- Identifier: five
+- Assign
+- Int: 5
+- Semicolon
+- Let
+- Identifier: ten
+- Assign
+- Int: 10
+- Semicolon
+- Let
+- Identifier: add
+- Assign
+- Function
+- LParen
+- Identifier: x
+- Comma
+- Identifier: y
+- RParen
+- LBrace
+- Identifier: x
+- Plus
+- Identifier: y
+- Semicolon
+- RBrace
+- Semicolon
+- Let
+- Identifier: result
+- Assign
+- Identifier: add
+- LParen
+- Identifier: five
+- Comma
+- Identifier: ten
+- RParen
+- Semicolon
+- Bang
+- Minus
+- Slash
+- Asterisk
+- Int: 5
+- Int: 5
+- Lt
+- Int: 10
+- Gt
+- Int: 5
+- If
+- LParen
+- Int: 5
+- Lt
+- Int: 10
+- RParen
+- LBrace
+- Return
+- "True"
+- Semicolon
+- RBrace
+- Else
+- LBrace
+- Return
+- "False"
+- Semicolon
+- RBrace
+- Int: 10
+- Eq
+- Int: 10
+- Int: 10
+- NotEq
+- Int: 9
+- String: foobar
+- String: foo bar
+- LBracket
+- Int: 1
+- Comma
+- Int: 2
+- RBracket
+

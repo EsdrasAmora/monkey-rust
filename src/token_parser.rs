@@ -1,14 +1,14 @@
 use anyhow::{anyhow, ensure, Result};
 use std::{
-    iter::Peekable,
+    iter::{self, Peekable},
     ops::{Deref, DerefMut},
     vec::IntoIter,
 };
 
 use crate::{
     ast::{
-        BinaryExpression, BlockStatement, CallExpression, Expression, FunctionExpression,
-        IfExpression, Literal, Statement, UnaryExpression, UnaryOperator,
+        ArrayLiteral, BinaryExpression, BlockStatement, CallExpression, Expression,
+        FunctionExpression, IfExpression, Literal, Statement, UnaryExpression, UnaryOperator,
     },
     token::{Identifier, Token},
 };
@@ -83,7 +83,7 @@ impl TokenParser {
                 //WTF: how can I assign left at the same time it is being moved?
                 left = Expression::Call(CallExpression {
                     function: left.boxed(),
-                    arguments: self.parse_call_arguments()?,
+                    arguments: self.parse_comma_list(&Token::RParen)?,
                 });
             } else {
                 break;
@@ -107,6 +107,7 @@ impl TokenParser {
             Token::LParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_fn_expression(),
+            Token::LBracket => self.parse_array_literal(),
             _ => Err(anyhow!("Cannot parse expression starting with {:?}", token)),
         }
     }
@@ -118,6 +119,13 @@ impl TokenParser {
             .and_then(|exp| self.parse_expression(exp, 0))?;
         self.try_eat(&Token::RParen)?;
         Ok(expression)
+    }
+
+    #[inline]
+    fn parse_array_literal(&mut self) -> Result<Expression> {
+        Ok(Expression::ArrayLiteral(ArrayLiteral::new(
+            self.parse_comma_list(&Token::RBracket)?,
+        )))
     }
 
     #[inline]
@@ -172,34 +180,35 @@ impl TokenParser {
 
     #[inline]
     fn parse_block(&mut self) -> Result<BlockStatement> {
-        let mut statements = vec![];
-
-        while let Some(token) = self.next_if(|x| x != &Token::RBrace) {
-            statements.push(self.parse_statement(token)?);
-        }
-
+        let statements = iter::from_fn(|| {
+            self.next_if(|x| x != &Token::RBrace)
+                .map(|token| self.parse_statement(token))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
         self.try_eat(&Token::RBrace)?;
         Ok(BlockStatement::new(statements))
     }
 
     #[inline]
-    fn parse_call_arguments(&mut self) -> Result<Vec<Expression>> {
-        let mut arguments = vec![];
-        if self.next_if_eq(&Token::RParen).is_some() {
-            return Ok(arguments);
+    fn parse_comma_list(&mut self, end: &Token) -> Result<Vec<Expression>> {
+        if self.next_if_eq(end).is_some() {
+            return Ok(vec![]);
         }
 
-        self.try_next()
-            .and_then(|token| self.parse_expression(token, 0))
-            .map(|exp| arguments.push(exp))?;
+        let first = self
+            .try_next()
+            .and_then(|token| Ok(self.parse_expression(token, 0)))
+            .map(iter::once)?;
 
-        while self.next_if_eq(&Token::Comma).is_some() {
-            self.try_next()
-                .and_then(|token| self.parse_expression(token, 0))
-                .map(|exp| arguments.push(exp))?
-        }
+        let arguments = iter::from_fn(|| {
+            self.next_if_eq(&Token::Comma).map(|_| {
+                self.try_next()
+                    .and_then(|token| self.parse_expression(token, 0))
+            })
+        });
+        let arguments = first.chain(arguments).collect::<Result<Vec<_>, _>>()?;
 
-        self.try_eat(&Token::RParen)?;
+        self.try_eat(end)?;
         Ok(arguments)
     }
 
