@@ -39,6 +39,11 @@ impl Lexer {
             '>' => chars.next_if_eq(&'=').map_or(Token::Gt, |_| Token::Gte),
             '=' => chars.next_if_eq(&'=').map_or(Token::Assign, |_| Token::Eq),
             '!' => chars.next_if_eq(&'=').map_or(Token::Bang, |_| Token::NotEq),
+            '"' => {
+                let string: SmolStr = iter::from_fn(|| chars.next_if(|x| *x != '"')).collect();
+                chars.next();
+                Token::String(string)
+            }
             _ if char.is_ascii_alphabetic() || char == '_' => {
                 let keyword: SmolStr = iter::once(char)
                     .chain(iter::from_fn(|| {
@@ -93,7 +98,10 @@ mod tests {
         }
 
         10 == 10;
-        10 != 9;"#;
+        10 != 9;
+        "foobar"
+        "foo bar"
+        "#;
 
         let lexer = Lexer::new(input);
 
@@ -172,7 +180,9 @@ mod tests {
                 Token::Int(10),
                 Token::NotEq,
                 Token::Int(9),
-                Token::Semicolon
+                Token::Semicolon,
+                Token::String(SmolStr::new_inline("foobar")),
+                Token::String(SmolStr::new_inline("foo bar")),
             ]
         )
     }

@@ -1,0 +1,10 @@
+---
+source: src/eval.rs
+expression: result
+---
+- "0"
+- "4"
+- "11"
+- "expected string, found: 1"
+- "expected 1 argument, found: 2"
+

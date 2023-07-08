@@ -2,10 +2,10 @@ use crate::ast::{
     BinaryExpression, BinaryOperator, BlockStatement, CallExpression, Expression,
     FunctionExpression, IfExpression, Literal, Statement, UnaryExpression,
 };
-use crate::object::{Environment, Function, Object, NIL};
+use crate::object::{BuiltInFunction, Environment, Function, Object, NIL};
 use crate::parser::Parser;
 use crate::token::Identifier;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 
 impl Environment {
     pub fn eval_program(&mut self, parser: Parser) -> Result<Object> {
@@ -124,6 +124,18 @@ impl CallExpression {
                 );
                 function.body.eval(&mut extended_env)
             }
+            Object::BuiltInFn(builtin) => match builtin {
+                BuiltInFunction::Len => {
+                    if let [first] = self.arguments.as_slice() {
+                        Ok(match first.clone().eval(environment)? {
+                            Object::String(val) => Object::Int(val.len() as i64),
+                            val => bail!("expected string, found: {}", val),
+                        })
+                    } else {
+                        bail!("expected 1 argument, found: {}", self.arguments.len())
+                    }
+                }
+            },
             value => Err(anyhow!("expected a function, found: {value}")),
         }
     }
@@ -205,8 +217,12 @@ mod tests {
             "1 > 1;",
             "1 < 2;",
             "1 < 1;",
+            "!!0",
+            "!!fn(x){}",
             "true == true;",
             "false != false;",
+            r#"!!"""#,
+            r#"!!"something""#,
         ];
 
         let result = parse_test_input(input.as_slice());
@@ -251,6 +267,39 @@ mod tests {
         ];
 
         let result = parse_test_input(input.as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_string_concat() {
+        let input = [r#""hello" + "world""#];
+
+        let result = parse_test_input(input.as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_builtin_len() {
+        let input = [
+            r#"len("")"#,
+            r#"len("four")"#,
+            r#"len("hello world")"#,
+            r#"len(1)"#,
+            r#"len("one", "two")"#,
+        ];
+
+        let result: Vec<_> = input
+            .iter()
+            .map(|x| {
+                let lexer = Lexer::new(x);
+                let parser = Parser::new(lexer);
+                let mut environment = Environment::new();
+                match environment.eval_program(parser) {
+                    Ok(ok) => ok.to_string(),
+                    Err(err) => err.to_string(),
+                }
+            })
+            .collect();
         assert_yaml_snapshot!(result);
     }
 
@@ -333,6 +382,7 @@ mod tests {
             };",
             "foobar;",
             "let foo = 3; let foo = 4;",
+            r#""Hello" - "World""#,
         ];
 
         let result: Vec<String> = input

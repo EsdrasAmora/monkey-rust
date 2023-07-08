@@ -17,9 +17,29 @@ pub enum Object {
     Nil,
     Int(i64),
     Bool(bool),
+    BuiltInFn(BuiltInFunction),
+    // BuiltInFunction(Box<dyn FnOnce(Vec<Object>) -> Result<Object>>),
     String(SmolStr),
     Function(Function),
     Return(Box<Object>),
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub enum BuiltInFunction {
+    Len,
+}
+
+impl BuiltInFunction {
+    pub fn name(&self) -> &'static str {
+        match self {
+            BuiltInFunction::Len => "len",
+        }
+    }
+    // pub fn call(&self, args: Vec<Object>) -> Result<Object> {
+    //     match self {
+    //         BuiltInFunction::Len => Ok(Object::Int(args[0].into_string()?.len() as i64)),
+    //     }
+    // }
 }
 
 type Result<T> = std::result::Result<T, EvalError>;
@@ -77,6 +97,8 @@ impl Environment {
             //Clone
             .cloned()
             .or_else(|| self.outer.as_ref().and_then(|x| x.get(name)))
+            .or((name.inner() == BuiltInFunction::Len.name())
+                .then_some(Object::BuiltInFn(BuiltInFunction::Len)))
     }
 
     pub fn try_insert(&mut self, ident: &Identifier, value: Object) -> Result<()> {
@@ -116,6 +138,7 @@ impl Display for Object {
             Object::Int(int) => write!(f, "{}", int),
             Object::Bool(bool) => write!(f, "{}", bool),
             Object::String(str) => write!(f, "{}", str),
+            Object::BuiltInFn(builtin) => write!(f, "{}", builtin.name()),
             Object::Function(function) => write!(f, "{}", function),
             Object::Return(obj) => write!(f, "{}", obj),
         }
@@ -139,6 +162,7 @@ impl Object {
             Object::Int(_) => "int",
             Object::Bool(_) => "bool",
             Object::String(_) => "string",
+            Object::BuiltInFn(builtin) => builtin.name(),
             Object::Function(_) => "function",
             Object::Return(_) => "return",
         }

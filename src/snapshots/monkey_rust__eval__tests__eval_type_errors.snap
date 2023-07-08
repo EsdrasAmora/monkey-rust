@@ -11,4 +11,5 @@ expression: result
 - "operator `Add` not supported between values Bool(true) and Bool(false)"
 - Identifier foobar not found
 - Identifier foo already defined
+- "operator `Sub` not supported between values String(\"Hello\") and String(\"World\")"
 
