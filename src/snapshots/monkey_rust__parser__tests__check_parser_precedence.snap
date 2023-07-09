@@ -432,4 +432,103 @@ expression: program.nodes
               Identifier: g
       function:
         Identifier: add
+- Expression:
+    BinaryExp:
+      operator: Mul
+      lhs:
+        BinaryExp:
+          operator: Mul
+          lhs:
+            Identifier: a
+          rhs:
+            IndexExpression:
+              container:
+                Literal:
+                  Array:
+                    - Literal:
+                        Int: 1
+                    - Literal:
+                        Int: 2
+                    - Literal:
+                        Int: 3
+                    - Literal:
+                        Int: 4
+              index:
+                BinaryExp:
+                  operator: Mul
+                  lhs:
+                    Identifier: b
+                  rhs:
+                    Identifier: c
+      rhs:
+        Identifier: d
+- Expression:
+    Call:
+      arguments:
+        - BinaryExp:
+            operator: Mul
+            lhs:
+              Identifier: a
+            rhs:
+              IndexExpression:
+                container:
+                  Identifier: b
+                index:
+                  Literal:
+                    Int: 2
+        - IndexExpression:
+            container:
+              Identifier: b
+            index:
+              Literal:
+                Int: 1
+        - BinaryExp:
+            operator: Mul
+            lhs:
+              Literal:
+                Int: 2
+            rhs:
+              IndexExpression:
+                container:
+                  Literal:
+                    Array:
+                      - Literal:
+                          Int: 1
+                      - Literal:
+                          Int: 2
+                index:
+                  Literal:
+                    Int: 1
+      function:
+        Identifier: add
+- Expression:
+    IndexExpression:
+      container:
+        Call:
+          arguments:
+            - Literal:
+                Int: 1
+          function:
+            Identifier: add
+      index:
+        Literal:
+          Int: 1
+- Expression:
+    Call:
+      arguments: []
+      function:
+        Call:
+          arguments: []
+          function:
+            Function:
+              parameters:
+                - y
+              body:
+                - Expression:
+                    Function:
+                      parameters:
+                        - x
+                      body:
+                        - Expression:
+                            Identifier: x
 

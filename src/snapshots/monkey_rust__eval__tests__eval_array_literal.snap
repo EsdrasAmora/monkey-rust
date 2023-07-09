@@ -1,0 +1,24 @@
+---
+source: src/eval.rs
+expression: result
+---
+- Array:
+    - Int: 1
+    - Int: 4
+    - String: foo
+    - Function:
+        parameters:
+          - x
+        body:
+          - Return:
+              BinaryExp:
+                operator: Add
+                lhs:
+                  Identifier: x
+                rhs:
+                  Literal:
+                    Int: 2
+        env:
+          curr: {}
+          outer: ~
+

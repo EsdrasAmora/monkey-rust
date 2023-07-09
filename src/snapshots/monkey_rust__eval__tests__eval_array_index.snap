@@ -1,0 +1,17 @@
+---
+source: src/eval.rs
+expression: result
+---
+- Int: 1
+- Int: 2
+- Int: 3
+- Int: 1
+- Int: 3
+- Int: 3
+- Int: 6
+- Int: 2
+- Nil
+- Int: 3
+- Int: 1
+- Nil
+

@@ -14,6 +14,7 @@ pub enum Token {
     True,
     False,
     Nil,
+    Dot,
     //Operators
     Eq,
     NotEq,
@@ -94,6 +95,7 @@ impl Token {
             Token::Plus | Token::Minus => 4,
             Token::Slash | Token::Asterisk => 5,
             Token::LParen => 7,
+            Token::LBracket => 8,
             _ => 0,
         }
     }

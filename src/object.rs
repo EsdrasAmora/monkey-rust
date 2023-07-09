@@ -1,6 +1,7 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
     fmt::Display,
+    ops::{Deref, DerefMut},
 };
 
 use serde::Serialize;
@@ -17,29 +18,65 @@ pub enum Object {
     Nil,
     Int(i64),
     Bool(bool),
-    BuiltInFn(BuiltInFunction),
-    // BuiltInFunction(Box<dyn FnOnce(Vec<Object>) -> Result<Object>>),
+    BuiltInFn(BuiltInFn),
+    Array(Array),
     String(SmolStr),
     Function(Function),
     Return(Box<Object>),
 }
 
 #[derive(Debug, Serialize, Clone)]
-pub enum BuiltInFunction {
+pub enum BuiltInFn {
     Len,
+    First,
+    Last,
+    Rest,
+    Push,
 }
 
-impl BuiltInFunction {
+#[derive(Debug, Serialize, Clone)]
+pub struct Array(pub Vec<Object>);
+
+impl From<Array> for Object {
+    fn from(vec: Array) -> Self {
+        Self::Array(vec)
+    }
+}
+
+impl Array {
+    pub fn new(storage: Vec<Object>) -> Self {
+        Self(storage)
+    }
+
+    pub fn push(&mut self, obj: Object) {
+        self.0.push(obj)
+    }
+}
+
+impl Deref for Array {
+    type Target = Vec<Object>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Array {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl BuiltInFn {
     pub fn name(&self) -> &'static str {
         match self {
-            BuiltInFunction::Len => "len",
+            BuiltInFn::Len => "len",
+            BuiltInFn::First => "first",
+            BuiltInFn::Last => "last",
+            BuiltInFn::Rest => "rest",
+            BuiltInFn::Push => "push",
         }
     }
-    // pub fn call(&self, args: Vec<Object>) -> Result<Object> {
-    //     match self {
-    //         BuiltInFunction::Len => Ok(Object::Int(args[0].into_string()?.len() as i64)),
-    //     }
-    // }
 }
 
 type Result<T> = std::result::Result<T, EvalError>;
@@ -74,6 +111,7 @@ pub struct Environment {
     //maybe use a single hashmap with the function name as key
     curr: HashMap<SmolStr, Object>,
     outer: Option<Box<Environment>>,
+    isRoot: bool,
 }
 
 impl Environment {
@@ -81,6 +119,7 @@ impl Environment {
         Self {
             curr: HashMap::new(),
             outer: None,
+            isRoot: true,
         }
     }
 
@@ -88,20 +127,29 @@ impl Environment {
         Self {
             curr,
             outer: Some(Box::new(outer)),
+            isRoot: false,
         }
     }
 
     pub fn get(&self, name: &Identifier) -> Option<Object> {
+        println!("dict: {:?}", self.curr);
         self.curr
             .get(&name.inner())
             //Clone
             .cloned()
             .or_else(|| self.outer.as_ref().and_then(|x| x.get(name)))
-            .or((name.inner() == BuiltInFunction::Len.name())
-                .then_some(Object::BuiltInFn(BuiltInFunction::Len)))
+            .or_else(|| match name.inner().as_str() {
+                "len" => Some(Object::BuiltInFn(BuiltInFn::Len)),
+                "first" => Some(Object::BuiltInFn(BuiltInFn::First)),
+                "last" => Some(Object::BuiltInFn(BuiltInFn::Last)),
+                "rest" => Some(Object::BuiltInFn(BuiltInFn::Rest)),
+                "push" => Some(Object::BuiltInFn(BuiltInFn::Push)),
+                _ => None,
+            })
     }
 
     pub fn try_insert(&mut self, ident: &Identifier, value: Object) -> Result<()> {
+        println!("insert: {}", ident);
         match self.curr.entry(ident.inner()) {
             Entry::Occupied(_) => Err(EvalError::IdentifierAlreadyDefined(ident.clone())),
             Entry::Vacant(entry) => {
@@ -141,6 +189,16 @@ impl Display for Object {
             Object::BuiltInFn(builtin) => write!(f, "{}", builtin.name()),
             Object::Function(function) => write!(f, "{}", function),
             Object::Return(obj) => write!(f, "{}", obj),
+            Object::Array(array) => write!(
+                f,
+                "[{}]",
+                array
+                    .0
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
         }
     }
 }
@@ -165,6 +223,7 @@ impl Object {
             Object::BuiltInFn(builtin) => builtin.name(),
             Object::Function(_) => "function",
             Object::Return(_) => "return",
+            Object::Array(_) => "array",
         }
     }
 

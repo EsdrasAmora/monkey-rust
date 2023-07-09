@@ -1,8 +1,10 @@
+use std::iter;
+
 use crate::ast::{
     BinaryExpression, BinaryOperator, BlockStatement, CallExpression, Expression,
-    FunctionExpression, IfExpression, Literal, Statement, UnaryExpression,
+    FunctionExpression, IfExpression, IndexExpression, Literal, Statement, UnaryExpression,
 };
-use crate::object::{BuiltInFunction, Environment, Function, Object, NIL};
+use crate::object::{Array, BuiltInFn, Environment, Function, Object, NIL};
 use crate::parser::Parser;
 use crate::token::Identifier;
 use anyhow::{anyhow, bail, Result};
@@ -56,6 +58,12 @@ impl Expression {
                 Literal::False => Object::Bool(false),
                 Literal::String(string) => Object::String(string),
                 Literal::Nil => Object::Nil,
+                Literal::Array(array) => Object::Array(Array::new(
+                    array
+                        .into_iter()
+                        .map(|x| x.eval(environment))
+                        .collect::<Result<_>>()?,
+                )),
             },
             Expression::Identifier(ident) => ident.eval(environment)?,
             Expression::UnaryExpression(exp) => exp.eval(environment)?,
@@ -63,7 +71,28 @@ impl Expression {
             Expression::If(if_exp) => if_exp.eval(environment)?,
             Expression::Function(fn_exp) => fn_exp.eval(environment)?,
             Expression::Call(call_exp) => call_exp.eval(environment)?,
-            Expression::ArrayLiteral(_) => todo!(),
+            Expression::IndexExpression(index_exp) => index_exp.eval(environment)?,
+        })
+    }
+}
+//TODO: use a trait design
+
+impl IndexExpression {
+    fn eval(self, environment: &mut Environment) -> Result<Object> {
+        let container = self.container.eval(environment)?;
+        let index = self.index.eval(environment)?;
+        Ok(match (container, index) {
+            (Object::Array(array), Object::Int(index)) => {
+                let value = if index.is_negative() {
+                    array.len().checked_sub(index.abs() as usize)
+                } else {
+                    Some(index as usize)
+                };
+                value.map_or(NIL.clone(), |x| {
+                    array.get(x).cloned().unwrap_or(NIL.clone())
+                })
+            }
+            (container, index) => bail!("index operator not supported: {}[{}]", container, index),
         })
     }
 }
@@ -98,53 +127,89 @@ impl BinaryExpression {
 
 impl Identifier {
     fn eval(self, environment: &mut Environment) -> Result<Object> {
-        Ok(environment
+        let result = environment
             .get(&self)
-            .ok_or(anyhow!("Identifier {} not found", self.inner()))?)
+            .ok_or(anyhow!("Identifier {} not found", self.inner()))?;
+        Ok(result)
     }
 }
 
 impl CallExpression {
     fn eval(self, environment: &mut Environment) -> Result<Object> {
         match self.function.eval(environment)? {
-            Object::Function(function) => {
-                let args = self
-                    .arguments
-                    .into_iter()
-                    .map(|x| x.eval(environment))
-                    .collect::<Result<Vec<_>, _>>()?;
-
-                let mut extended_env = Environment::new_enclosed(
-                    function.env,
-                    function
-                        .parameters
-                        .into_iter()
-                        .map(|x| x.inner())
-                        .zip(args)
-                        .collect(),
-                );
-                function.body.eval(&mut extended_env)
-            }
-            Object::BuiltInFn(builtin) => match builtin {
-                BuiltInFunction::Len => {
-                    if let [first] = self.arguments.as_slice() {
-                        Ok(match first.clone().eval(environment)? {
-                            Object::String(val) => Object::Int(val.len() as i64),
-                            val => bail!("expected string, found: {}", val),
-                        })
-                    } else {
-                        bail!("expected 1 argument, found: {}", self.arguments.len())
-                    }
-                }
-            },
+            Object::Function(function) => function.eval(environment, self.arguments),
+            Object::BuiltInFn(builtin) => builtin.eval(environment, self.arguments),
             value => Err(anyhow!("expected a function, found: {value}")),
         }
     }
 }
 
+impl BuiltInFn {
+    pub fn eval(self, environment: &mut Environment, arguments: Vec<Expression>) -> Result<Object> {
+        match self {
+            BuiltInFn::Len => {
+                //could use https://docs.rs/itertools/0.11.0/itertools/trait.Itertools.html#method.tuples
+                match TryInto::<[Expression; 1]>::try_into(arguments) {
+                    Ok([val]) => Ok(match val.eval(environment)? {
+                        Object::String(val) => Object::Int(val.len() as i64),
+                        Object::Array(val) => Object::Int(val.len() as i64),
+                        val => bail!("expected array or string, found: {}", val),
+                    }),
+                    Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
+                }
+            }
+            BuiltInFn::First => match TryInto::<[Expression; 1]>::try_into(arguments) {
+                Ok([val]) => Ok(match val.eval(environment)? {
+                    Object::Array(val) => val.first().cloned().unwrap_or(NIL.clone()),
+                    val => bail!("expected array, found: {}", val),
+                }),
+                Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
+            },
+            BuiltInFn::Last => match TryInto::<[Expression; 1]>::try_into(arguments) {
+                Ok([val]) => Ok(match val.eval(environment)? {
+                    Object::Array(val) => val.last().cloned().unwrap_or(NIL.clone()),
+                    val => bail!("expected array, found: {}", val),
+                }),
+                Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
+            },
+            BuiltInFn::Rest => match TryInto::<[Expression; 1]>::try_into(arguments) {
+                Ok([val]) => Ok(match val.eval(environment)? {
+                    Object::Array(val) => Array::new(val.0.into_iter().skip(1).collect()).into(),
+                    val => bail!("expected array, found: {}", val),
+                }),
+                Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
+            },
+            BuiltInFn::Push => match TryInto::<[Expression; 2]>::try_into(arguments) {
+                Ok([container, element]) => Ok(
+                    match (container.eval(environment)?, element.eval(environment)?) {
+                        (Object::Array(array), element) => {
+                            Array::new(array.0.into_iter().chain(iter::once(element)).collect())
+                                .into()
+                        }
+                        val => bail!("expected array and element, found: {} and {}", val.0, val.1),
+                    },
+                ),
+                Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
+            },
+        }
+    }
+}
+
 impl Function {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        Ok(Object::Function(self))
+    fn eval(self, environment: &mut Environment, arguments: Vec<Expression>) -> Result<Object> {
+        let args = arguments
+            .into_iter()
+            .map(|x| x.eval(environment))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut extended_env = Environment::new_enclosed(
+            self.env,
+            self.parameters
+                .into_iter()
+                .map(|x| x.inner())
+                .zip(args)
+                .collect(),
+        );
+        self.body.eval(&mut extended_env)
     }
 }
 
@@ -175,7 +240,6 @@ impl IfExpression {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use crate::{lexer::Lexer, parser::Parser};
     use insta::assert_yaml_snapshot;
@@ -202,6 +266,44 @@ mod tests {
         ];
 
         let result = parse_test_input(input.as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_recursive_fn() {
+        let input = "
+            let fib = fn(x) {
+                if (x <= 0){
+                    1
+                }else{
+                    fib(x - 1) + fib(x - 2)
+                }
+            }
+            fib(3);
+        ";
+        let result = parse_test_input([input].as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_array_map() {
+        let input = "
+        let map = fn(arr, f) {
+            let iter = fn(arr, accumulated) {
+                if (len(arr) == 0) {
+                    accumulated
+                } else {
+                    iter(rest(arr), push(accumulated, f(first(arr))));
+                }
+            };
+            iter(arr, []);
+        };
+        let a = [1, 2, 3, 4];
+        let double = fn(x) { x * 2 };
+        map(a, double);
+        ";
+
+        let result = parse_test_input([input].as_slice());
         assert_yaml_snapshot!(result);
     }
 
@@ -234,6 +336,35 @@ mod tests {
     fn eval_not_expression() {
         let input = [
             "!5;", "!!5;", "!0;", "!!0;", "!true;", "!!true;", "!false;", "!!false;",
+        ];
+
+        let result = parse_test_input(input.as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_array_literal() {
+        let input = [r#"[1, 2 * 2, "foo", fn(x) { return x + 2; }]"#];
+
+        let result = parse_test_input(input.as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_array_index() {
+        let input = [
+            "[1, 2, 3][0]",
+            "[1, 2, 3][1]",
+            "[1, 2, 3][2]",
+            "let i = 0; [1][i];",
+            "[1, 2, 3][1 + 1];",
+            "let myArray = [1, 2, 3]; myArray[2];",
+            "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+            "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
+            "[1, 2, 3][3]",
+            "[1, 2, 3][-1]",
+            "[1, 2, 3][-3]",
+            "[1, 2, 3][-4]",
         ];
 
         let result = parse_test_input(input.as_slice());

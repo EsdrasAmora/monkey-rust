@@ -3,23 +3,24 @@ source: src/parser.rs
 expression: program.nodes
 ---
 - Expression:
-    ArrayLiteral:
-      - Literal:
-          Int: 1
-      - BinaryExp:
-          operator: Mul
-          lhs:
-            Literal:
-              Int: 2
-          rhs:
-            Literal:
-              Int: 2
-      - Literal:
-          String: ola
-      - Function:
-          parameters:
-            - x
-          body:
-            - Return:
-                Identifier: x
+    Literal:
+      Array:
+        - Literal:
+            Int: 1
+        - BinaryExp:
+            operator: Mul
+            lhs:
+              Literal:
+                Int: 2
+            rhs:
+              Literal:
+                Int: 2
+        - Literal:
+            String: ola
+        - Function:
+            parameters:
+              - x
+            body:
+              - Return:
+                  Identifier: x
 

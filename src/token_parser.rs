@@ -7,8 +7,8 @@ use std::{
 
 use crate::{
     ast::{
-        ArrayLiteral, BinaryExpression, BlockStatement, CallExpression, Expression,
-        FunctionExpression, IfExpression, Literal, Statement, UnaryExpression, UnaryOperator,
+        BinaryExpression, BlockStatement, CallExpression, Expression, FunctionExpression,
+        IfExpression, IndexExpression, Literal, Statement, UnaryExpression, UnaryOperator,
     },
     token::{Identifier, Token},
 };
@@ -57,8 +57,8 @@ impl TokenParser {
             }
             _ => {
                 let expression = self.parse_expression(token, 0)?;
-                //intentionally ignore the error as the semicolon is optional
-                self.try_eat(&Token::Semicolon).ok();
+                //Semicolon is optional here
+                let _ = self.try_eat(&Token::Semicolon);
                 Ok(Statement::Expression(Box::new(expression)))
             }
         }
@@ -85,6 +85,15 @@ impl TokenParser {
                     function: left.boxed(),
                     arguments: self.parse_comma_list(&Token::RParen)?,
                 });
+            } else if matches!(token, Token::LBracket) {
+                left = Expression::IndexExpression(IndexExpression {
+                    container: left.boxed(),
+                    index: self
+                        .try_next()
+                        .and_then(|exp| self.parse_expression(exp, 0))?
+                        .boxed(),
+                });
+                self.try_eat(&Token::RBracket)?;
             } else {
                 break;
             }
@@ -123,9 +132,7 @@ impl TokenParser {
 
     #[inline]
     fn parse_array_literal(&mut self) -> Result<Expression> {
-        Ok(Expression::ArrayLiteral(ArrayLiteral::new(
-            self.parse_comma_list(&Token::RBracket)?,
-        )))
+        Ok(Literal::Array(self.parse_comma_list(&Token::RBracket)?).into())
     }
 
     #[inline]
@@ -190,24 +197,30 @@ impl TokenParser {
     }
 
     #[inline]
+    fn parse_index_expression(&mut self, end: &Token) -> Result<Expression> {
+        self.try_next()
+            .and_then(|exp| self.parse_expression(exp, 0))
+            .and_then(|exp| {
+                self.try_eat(&Token::RBracket)?;
+                Ok(exp)
+            })
+    }
+
+    #[inline]
     fn parse_comma_list(&mut self, end: &Token) -> Result<Vec<Expression>> {
+        let mut arguments = vec![];
         if self.next_if_eq(end).is_some() {
             return Ok(vec![]);
         }
-
-        let first = self
-            .try_next()
-            .and_then(|token| Ok(self.parse_expression(token, 0)))
-            .map(iter::once)?;
-
-        let arguments = iter::from_fn(|| {
-            self.next_if_eq(&Token::Comma).map(|_| {
+        loop {
+            arguments.push(
                 self.try_next()
-                    .and_then(|token| self.parse_expression(token, 0))
-            })
-        });
-        let arguments = first.chain(arguments).collect::<Result<Vec<_>, _>>()?;
-
+                    .and_then(|token| self.parse_expression(token, 0))?,
+            );
+            if self.next_if_eq(&Token::Comma).is_none() {
+                break;
+            }
+        }
         self.try_eat(end)?;
         Ok(arguments)
     }

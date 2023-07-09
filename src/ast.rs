@@ -19,9 +19,9 @@ pub enum Expression {
     BinaryExp(BinaryExpression),
     UnaryExpression(UnaryExpression),
     If(IfExpression),
+    IndexExpression(IndexExpression),
     Function(FunctionExpression),
     Call(CallExpression),
-    ArrayLiteral(ArrayLiteral),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
@@ -57,12 +57,9 @@ pub struct CallExpression {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-pub struct ArrayLiteral(Vec<Expression>);
-
-impl ArrayLiteral {
-    pub fn new(value: Vec<Expression>) -> Self {
-        Self(value)
-    }
+pub struct IndexExpression {
+    pub container: Box<Expression>,
+    pub index: Box<Expression>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
@@ -104,6 +101,7 @@ impl Expression {
 pub enum Literal {
     Int(i64),
     String(SmolStr),
+    Array(Vec<Expression>),
     True,
     False,
     Nil,

@@ -1,39 +1,40 @@
-use std::io::{self, BufRead};
+use monkey_rust::lexer::Lexer;
+use monkey_rust::object::Environment;
+use monkey_rust::parser::Parser;
+use rustyline::error::ReadlineError;
+use rustyline::{DefaultEditor, Result};
 
-use monkey_rust::{
-    lexer::Lexer,
-    object::{self, Object},
-    parser::Parser,
-};
+fn main() -> Result<()> {
+    let mut rl = DefaultEditor::new()?;
+    let mut env = Environment::new();
+    // let mut buffer = vec![];
 
-fn main() -> anyhow::Result<()> {
-    let lines = io::stdin().lock().lines();
-    let mut environment = object::Environment::new();
-    for line in lines {
-        let line = line.expect("Unable to read line from stdin");
-
-        if line.is_empty() {
-            println!("Empty line, exiting");
-            break;
-        }
-        let parser = Parser::new(Lexer::new(&line));
-        if !parser.errors.is_empty() {
-            println!("errors: {:?}", parser.errors);
-        }
-        if parser.nodes.is_empty() {
-            continue;
-        }
-        let result = environment.eval_program(parser);
-
-        match result {
-            Ok(object) => {
-                if matches!(object, Object::Nil) {
+    loop {
+        let readline = rl.readline(">> ");
+        match readline {
+            Ok(line) => {
+                if line.is_empty() {
                     continue;
                 }
-                println!("{:?}", object)
+                let lexer = Lexer::new(&line);
+                let parser = Parser::new(lexer);
+                let result = env.eval_program(parser);
+                println!("{:?}", result);
             }
-            Err(err) => println!("Error: {}", err),
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
         }
     }
+
     Ok(())
 }
