@@ -102,6 +102,7 @@ pub enum Literal {
     Int(i64),
     String(SmolStr),
     Array(Vec<Expression>),
+    Hash(Vec<(Expression, Expression)>),
     True,
     False,
     Nil,

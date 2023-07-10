@@ -70,6 +70,7 @@ impl Expression {
                 Literal::False => Object::Bool(false),
                 Literal::String(string) => Object::String(string),
                 Literal::Nil => Object::Nil,
+                Literal::Hash(hash) => todo!(),
                 Literal::Array(array) => Object::Array(Array::new(
                     array
                         .into_iter()

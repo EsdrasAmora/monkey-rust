@@ -1,0 +1,40 @@
+---
+source: src/parser.rs
+expression: program.nodes
+---
+- Expression:
+    Literal:
+      Hash:
+        - - Literal:
+              Int: 1
+          - Literal:
+              Int: 1
+        - - Literal:
+              String: two
+          - Literal:
+              Int: 2
+        - - Literal: "True"
+          - Literal:
+              Int: 3
+- Expression:
+    Literal:
+      Hash: []
+- Expression:
+    Literal:
+      Hash:
+        - - Identifier: a
+          - BinaryExp:
+              operator: Add
+              lhs:
+                Literal:
+                  Int: 1
+              rhs:
+                Literal:
+                  Int: 1
+        - - Identifier: b
+          - Literal:
+              Hash:
+                - - Identifier: c
+                  - Literal:
+                      Int: 0
+

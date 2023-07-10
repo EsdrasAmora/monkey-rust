@@ -37,11 +37,9 @@ impl TokenParser {
     pub fn parse_statement(&mut self, token: Token) -> Result<Statement> {
         match token {
             Token::Let => {
-                let identifier = self.try_next().and_then(TryInto::try_into)?;
+                let identifier = self.try_ident()?;
                 self.try_eat(&Token::Assign)?;
-                let expression = self
-                    .try_next()
-                    .and_then(|token| self.parse_expression(token, 0))?;
+                let expression = self.try_parse()?;
                 self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Let {
                     identifier,
@@ -49,9 +47,7 @@ impl TokenParser {
                 })
             }
             Token::Return => {
-                let expression = self
-                    .try_next()
-                    .and_then(|token| self.parse_expression(token, 0))?;
+                let expression = self.try_parse()?;
                 self.try_eat(&Token::Semicolon)?;
                 Ok(Statement::Return(Box::new(expression)))
             }
@@ -88,10 +84,7 @@ impl TokenParser {
             } else if matches!(token, Token::LBracket) {
                 left = Expression::IndexExpression(IndexExpression {
                     container: left.boxed(),
-                    index: self
-                        .try_next()
-                        .and_then(|exp| self.parse_expression(exp, 0))?
-                        .boxed(),
+                    index: self.try_parse()?.boxed(),
                 });
                 self.try_eat(&Token::RBracket)?;
             } else {
@@ -117,15 +110,67 @@ impl TokenParser {
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_fn_expression(),
             Token::LBracket => self.parse_array_literal(),
-            _ => Err(anyhow!("Cannot parse expression starting with {:?}", token)),
+            Token::LBrace => self.parse_hash_literal(),
+            Token::Dot => todo!(),
+            Token::Illegal
+            | Token::Eq
+            | Token::NotEq
+            | Token::Assign
+            | Token::Plus
+            | Token::Asterisk
+            | Token::Slash
+            | Token::Lt
+            | Token::Lte
+            | Token::Gt
+            | Token::Gte
+            | Token::Comma
+            | Token::Colon
+            | Token::Semicolon
+            | Token::RParen
+            | Token::RBrace
+            | Token::RBracket
+            | Token::Let
+            | Token::Else
+            | Token::Return => Err(anyhow!("Unexpected token {:?}", token)),
         }
     }
 
     #[inline]
+    fn try_parse(&mut self) -> Result<Expression> {
+        self.try_next()
+            .and_then(|token| self.parse_expression(token, 0))
+    }
+
+    fn try_ident(&mut self) -> Result<Identifier> {
+        self.try_next()?.try_into()
+    }
+
+    #[inline]
+    fn parse_hash_literal(&mut self) -> Result<Expression> {
+        let mut arguments = vec![];
+        if self.next_if_eq(&Token::RBrace).is_some() {
+            return Ok(Literal::Hash(arguments).into());
+        }
+        loop {
+            let key = self.try_parse()?;
+
+            self.try_eat(&Token::Colon)?;
+
+            let value = self.try_parse()?;
+
+            arguments.push((key, value));
+
+            if self.next_if_eq(&Token::Comma).is_none() {
+                break;
+            }
+        }
+        self.try_eat(&Token::RBrace)?;
+        Ok(Literal::Hash(arguments).into())
+    }
+
+    #[inline]
     fn parse_grouped_expression(&mut self) -> Result<Expression> {
-        let expression = self
-            .try_next()
-            .and_then(|exp| self.parse_expression(exp, 0))?;
+        let expression = self.try_parse()?;
         self.try_eat(&Token::RParen)?;
         Ok(expression)
     }
@@ -149,9 +194,7 @@ impl TokenParser {
     #[inline]
     fn parse_if_expression(&mut self) -> Result<Expression> {
         self.try_eat(&Token::LParen)?;
-        let condition = self
-            .try_next()
-            .and_then(|token| self.parse_expression(token, 0))?;
+        let condition = self.try_parse()?;
         self.try_eat(&Token::RParen)?;
         self.try_eat(&Token::LBrace)?;
         let consequence = self.parse_block()?;
@@ -198,12 +241,9 @@ impl TokenParser {
 
     #[inline]
     fn parse_index_expression(&mut self, end: &Token) -> Result<Expression> {
-        self.try_next()
-            .and_then(|exp| self.parse_expression(exp, 0))
-            .and_then(|exp| {
-                self.try_eat(&Token::RBracket)?;
-                Ok(exp)
-            })
+        let exp = self.try_parse()?;
+        self.try_eat(&Token::RBracket)?;
+        Ok(exp)
     }
 
     #[inline]
@@ -213,10 +253,7 @@ impl TokenParser {
             return Ok(vec![]);
         }
         loop {
-            arguments.push(
-                self.try_next()
-                    .and_then(|token| self.parse_expression(token, 0))?,
-            );
+            arguments.push(self.try_parse()?);
             if self.next_if_eq(&Token::Comma).is_none() {
                 break;
             }
@@ -233,10 +270,11 @@ impl TokenParser {
             return Ok(parameters);
         }
 
-        parameters.push(self.try_next()?.try_into()?);
-
-        while self.next_if_eq(&Token::Comma).is_some() {
-            parameters.push(self.try_next()?.try_into()?);
+        loop {
+            parameters.push(self.try_ident()?);
+            if self.next_if_eq(&Token::Comma).is_none() {
+                break;
+            }
         }
 
         self.try_eat(&Token::RParen)?;

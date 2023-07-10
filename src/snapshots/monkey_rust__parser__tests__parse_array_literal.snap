@@ -23,4 +23,18 @@ expression: program.nodes
             body:
               - Return:
                   Identifier: x
+- Expression:
+    Literal:
+      Array: []
+- Expression:
+    Literal:
+      Array:
+        - Literal:
+            Array:
+              - Literal:
+                  Int: 1
+              - Literal:
+                  Int: 2
+        - Literal:
+            Int: 3
 

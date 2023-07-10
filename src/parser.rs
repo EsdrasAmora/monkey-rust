@@ -128,7 +128,16 @@ mod tests {
 
     #[test]
     fn parse_array_literal() {
-        let input = r#"[1, 2 * 2, "ola", fn(x){ return x; }]"#;
+        let input = r#"[1, 2 * 2, "ola", fn(x){ return x; }];[];[[1,2],3]"#;
+        let lexer = Lexer::new(input);
+        let program = Parser::new(lexer);
+        assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);
+        assert_yaml_snapshot!(program.nodes);
+    }
+
+    #[test]
+    fn parse_hashtable_literal() {
+        let input = r#"{1: 1, "two": 2, true: 3};{};{a: 1+1, b: {c: 0}}"#;
         let lexer = Lexer::new(input);
         let program = Parser::new(lexer);
         assert!(program.errors.is_empty(), "errors: {:#?}", program.errors);

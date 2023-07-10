@@ -78,4 +78,9 @@ expression: result.tokens
 - Comma
 - Int: 2
 - RBracket
+- LBrace
+- String: foo
+- Colon
+- String: bar
+- RBrace
 

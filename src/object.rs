@@ -22,6 +22,7 @@ pub enum Object {
     Bool(bool),
     BuiltInFn(BuiltInFn),
     Array(Array),
+    HashTable(HashTable),
     String(SmolStr),
     Function(Box<Function>),
     Return(Box<Object>),
@@ -38,6 +39,9 @@ pub enum BuiltInFn {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Array(pub Vec<Object>);
+
+#[derive(Debug, Serialize, Clone)]
+pub struct HashTable(pub HashMap<SmolStr, Object>);
 
 impl From<Array> for Object {
     fn from(vec: Array) -> Self {
@@ -207,6 +211,15 @@ impl Display for Object {
             Object::BuiltInFn(builtin) => write!(f, "{}", builtin.name()),
             Object::Function(function) => write!(f, "{}", function),
             Object::Return(obj) => write!(f, "{}", obj),
+            Object::HashTable(hash) => write!(
+                f,
+                "{{{}}}",
+                hash.0
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", k, v))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             Object::Array(array) => write!(
                 f,
                 "[{}]",
@@ -242,6 +255,7 @@ impl Object {
             Object::Function(_) => "function",
             Object::Return(_) => "return",
             Object::Array(_) => "array",
+            Object::HashTable(_) => "object",
         }
     }
 

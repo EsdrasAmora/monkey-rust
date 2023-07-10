@@ -37,6 +37,7 @@ impl Lexer {
             '-' => Token::Minus,
             '*' => Token::Asterisk,
             '/' => Token::Slash,
+            ':' => Token::Colon,
             '<' => chars.next_if_eq(&'=').map_or(Token::Lt, |_| Token::Lte),
             '>' => chars.next_if_eq(&'=').map_or(Token::Gt, |_| Token::Gte),
             '=' => chars.next_if_eq(&'=').map_or(Token::Assign, |_| Token::Eq),
@@ -106,6 +107,7 @@ mod tests {
         "foobar"
         "foo bar"
         [1, 2]
+        {"foo": "bar"}
         "#;
 
         let result = Lexer::new(input);

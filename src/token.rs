@@ -30,6 +30,7 @@ pub enum Token {
     Gte,
     //Delimiters
     Comma,
+    Colon,
     Semicolon,
     LParen,
     RParen,
@@ -78,13 +79,6 @@ impl TryFrom<Token> for Identifier {
         }
     }
 }
-
-// impl From<SmolStr> for Identifier {
-//     #[inline]
-//     fn from(name: SmolStr) -> Self {
-//         Self::new(name)
-//     }
-// }
 
 impl Token {
     #[inline]
