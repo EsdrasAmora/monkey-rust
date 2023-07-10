@@ -1,10 +1,12 @@
 use std::{
+    cell::RefCell,
     collections::{hash_map::Entry, HashMap},
-    fmt::Display,
+    fmt::{self, Display},
     ops::{Deref, DerefMut},
+    rc::Rc,
 };
 
-use serde::Serialize;
+use serde::{self, Serialize};
 use smol_str::SmolStr;
 use thiserror::Error;
 
@@ -21,7 +23,7 @@ pub enum Object {
     BuiltInFn(BuiltInFn),
     Array(Array),
     String(SmolStr),
-    Function(Function),
+    Function(Box<Function>),
     Return(Box<Object>),
 }
 
@@ -81,63 +83,70 @@ impl BuiltInFn {
 
 type Result<T> = std::result::Result<T, EvalError>;
 
-pub static TRUE: Object = Object::Bool(true);
-pub static FALSE: Object = Object::Bool(false);
-pub static NIL: Object = Object::Nil;
-pub static ZERO: Object = Object::Int(0);
-pub static EMPTY_STRING: Object = Object::String(SmolStr::new_inline(""));
+pub const TRUE: Object = Object::Bool(true);
+pub const FALSE: Object = Object::Bool(false);
+pub const NIL: Object = Object::Nil;
+pub const ZERO: Object = Object::Int(0);
+pub const EMPTY_STRING: Object = Object::String(SmolStr::new_inline(""));
 
 #[derive(Error, Debug)]
 pub enum EvalError {
     #[error("operator `{operator:?}` not supported for value {operand:?}")]
     UnaryOpError {
         operator: UnaryOperator,
-        operand: Object,
+        operand: String,
     },
     #[error("operator `{operator:?}` not supported between values {lhs:?} and {rhs:?}")]
     BinaryOpError {
         operator: BinaryOperator,
-        lhs: Object,
-        rhs: Object,
+        lhs: String,
+        rhs: String,
     },
     #[error("{target} coercion unsuported for {value:?}")]
-    CoercionError { target: &'static str, value: Object },
+    CoercionError { target: &'static str, value: String },
     #[error("Identifier {0} already defined")]
     IdentifierAlreadyDefined(Identifier),
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Serialize, Clone)]
 pub struct Environment {
     //maybe use a single hashmap with the function name as key
     curr: HashMap<SmolStr, Object>,
-    outer: Option<Box<Environment>>,
-    isRoot: bool,
+    #[serde(skip_serializing)]
+    outer: Option<SharedEnv>,
 }
+
+impl fmt::Debug for Environment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment")
+            .field("curr", &self.curr)
+            .finish()
+    }
+}
+
+pub type SharedEnv = Rc<RefCell<Box<Environment>>>;
 
 impl Environment {
     pub fn new() -> Self {
         Self {
             curr: HashMap::new(),
             outer: None,
-            isRoot: true,
         }
     }
 
-    pub fn new_enclosed(outer: Self, curr: HashMap<SmolStr, Object>) -> Self {
-        Self {
+    pub fn new_enclosed(outer: SharedEnv, curr: HashMap<SmolStr, Object>) -> SharedEnv {
+        Rc::new(RefCell::new(Box::new(Self {
             curr,
-            outer: Some(Box::new(outer)),
-            isRoot: false,
-        }
+            outer: Some(outer),
+        })))
     }
 
     pub fn get(&self, name: &Identifier) -> Option<Object> {
-        println!("dict: {:?}", self.curr);
         self.curr
             .get(&name.inner())
             //Clone
             .cloned()
-            .or_else(|| self.outer.as_ref().and_then(|x| x.get(name)))
+            .or_else(|| self.outer.as_ref().and_then(|x| x.borrow().get(name)))
             .or_else(|| match name.inner().as_str() {
                 "len" => Some(Object::BuiltInFn(BuiltInFn::Len)),
                 "first" => Some(Object::BuiltInFn(BuiltInFn::First)),
@@ -149,7 +158,6 @@ impl Environment {
     }
 
     pub fn try_insert(&mut self, ident: &Identifier, value: Object) -> Result<()> {
-        println!("insert: {}", ident);
         match self.curr.entry(ident.inner()) {
             Entry::Occupied(_) => Err(EvalError::IdentifierAlreadyDefined(ident.clone())),
             Entry::Vacant(entry) => {
@@ -160,11 +168,21 @@ impl Environment {
     }
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Serialize, Clone)]
 pub struct Function {
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
-    pub env: Environment,
+    #[serde(skip_serializing)]
+    pub env: SharedEnv,
+}
+
+impl fmt::Debug for Function {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Function")
+            .field("parameters", &self.parameters)
+            .field("body", &self.body)
+            .finish()
+    }
 }
 
 impl Display for Function {
@@ -204,7 +222,7 @@ impl Display for Object {
 }
 
 impl Function {
-    pub fn new(parameters: Vec<Identifier>, body: BlockStatement, env: Environment) -> Self {
+    pub fn new(parameters: Vec<Identifier>, body: BlockStatement, env: SharedEnv) -> Self {
         Self {
             parameters,
             body,
@@ -235,7 +253,7 @@ impl Object {
             other => {
                 return Err(EvalError::CoercionError {
                     target: EMPTY_STRING.as_typeof(),
-                    value: other,
+                    value: other.to_string(),
                 })
             }
         })
@@ -249,13 +267,13 @@ impl Object {
                 Ok(int) => int,
                 Err(_) => Err(EvalError::CoercionError {
                     target: ZERO.as_typeof(),
-                    value: Object::String(value),
+                    value: Object::String(value).to_string(),
                 })?,
             },
             other => {
                 return Err(EvalError::CoercionError {
                     target: ZERO.as_typeof(),
-                    value: other,
+                    value: other.to_string(),
                 })
             }
         })
@@ -271,7 +289,7 @@ impl Object {
             other => {
                 return Err(EvalError::CoercionError {
                     target: TRUE.as_typeof(),
-                    value: other,
+                    value: other.to_string(),
                 })
             }
         })
@@ -287,7 +305,7 @@ impl Object {
             operand => {
                 return Err(EvalError::UnaryOpError {
                     operator: UnaryOperator::Minus,
-                    operand,
+                    operand: operand.to_string(),
                 })
             }
         }
@@ -302,8 +320,8 @@ impl Object {
             (lhs, rhs) => {
                 return Err(EvalError::BinaryOpError {
                     operator: BinaryOperator::Add,
-                    lhs,
-                    rhs,
+                    lhs: lhs.to_string(),
+                    rhs: rhs.to_string(),
                 })
             }
         })
@@ -315,8 +333,8 @@ impl Object {
             (lhs, rhs) => {
                 return Err(EvalError::BinaryOpError {
                     operator: BinaryOperator::Sub,
-                    lhs,
-                    rhs,
+                    lhs: lhs.to_string(),
+                    rhs: rhs.to_string(),
                 })
             }
         })
@@ -328,8 +346,8 @@ impl Object {
             (lhs, rhs) => {
                 return Err(EvalError::BinaryOpError {
                     operator: BinaryOperator::Mul,
-                    lhs,
-                    rhs,
+                    lhs: lhs.to_string(),
+                    rhs: rhs.to_string(),
                 })
             }
         })
@@ -341,8 +359,8 @@ impl Object {
             (lhs, rhs) => {
                 return Err(EvalError::BinaryOpError {
                     operator: BinaryOperator::Div,
-                    lhs,
-                    rhs,
+                    lhs: lhs.to_string(),
+                    rhs: rhs.to_string(),
                 })
             }
         })
@@ -394,9 +412,9 @@ impl Object {
 impl From<bool> for Object {
     fn from(bool: bool) -> Self {
         if bool {
-            TRUE.clone()
+            TRUE
         } else {
-            FALSE.clone()
+            FALSE
         }
     }
 }

@@ -2,14 +2,14 @@
 source: src/eval.rs
 expression: result
 ---
-- "operator `Add` not supported between values Int(5) and Bool(true)"
-- "operator `Add` not supported between values Int(5) and Bool(true)"
-- "operator `Minus` not supported for value Bool(true)"
-- "operator `Add` not supported between values Bool(true) and Bool(false)"
-- "operator `Add` not supported between values Bool(true) and Bool(false)"
-- "operator `Add` not supported between values Bool(true) and Bool(false)"
-- "operator `Add` not supported between values Bool(true) and Bool(false)"
+- "operator `Add` not supported between values \"5\" and \"true\""
+- "operator `Add` not supported between values \"5\" and \"true\""
+- "operator `Minus` not supported for value \"true\""
+- "operator `Add` not supported between values \"true\" and \"false\""
+- "operator `Add` not supported between values \"true\" and \"false\""
+- "operator `Add` not supported between values \"true\" and \"false\""
+- "operator `Add` not supported between values \"true\" and \"false\""
 - Identifier foobar not found
 - Identifier foo already defined
-- "operator `Sub` not supported between values String(\"Hello\") and String(\"World\")"
+- "operator `Sub` not supported between values \"Hello\" and \"World\""
 

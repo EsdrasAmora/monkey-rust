@@ -1,19 +1,31 @@
+use std::cell::RefCell;
 use std::iter;
+use std::rc::Rc;
 
 use crate::ast::{
     BinaryExpression, BinaryOperator, BlockStatement, CallExpression, Expression,
     FunctionExpression, IfExpression, IndexExpression, Literal, Statement, UnaryExpression,
 };
-use crate::object::{Array, BuiltInFn, Environment, Function, Object, NIL};
+use crate::object::{Array, BuiltInFn, Environment, Function, Object, SharedEnv, NIL};
 use crate::parser::Parser;
 use crate::token::Identifier;
 use anyhow::{anyhow, bail, Result};
 
-impl Environment {
-    pub fn eval_program(&mut self, parser: Parser) -> Result<Object> {
+pub struct Program {
+    pub env: SharedEnv,
+}
+
+impl Program {
+    pub fn new() -> Self {
+        Self {
+            env: Rc::new(RefCell::new(Box::new(Environment::new()))),
+        }
+    }
+
+    pub fn eval(&mut self, parser: Parser) -> Result<Object> {
         let mut result = Object::Nil;
         for statement in parser.nodes {
-            result = statement.eval(self)?;
+            result = statement.eval(self.env.clone())?;
             if let Object::Return(inner) = result {
                 return Ok(*inner);
             }
@@ -23,12 +35,12 @@ impl Environment {
 }
 
 impl Statement {
-    fn eval(self: Statement, environment: &mut Environment) -> Result<Object> {
+    fn eval(self: Statement, environment: SharedEnv) -> Result<Object> {
         match self {
             Statement::Let { identifier, value } => {
-                let val = value.eval(environment)?;
-                environment.try_insert(&identifier, val)?;
-                Ok(NIL.clone())
+                let val = value.eval(environment.clone())?;
+                environment.borrow_mut().try_insert(&identifier, val)?;
+                Ok(NIL)
             }
             Statement::Return(exp) => Ok(Object::Return(Box::new(exp.eval(environment)?))),
             Statement::Expression(exp) => Ok(exp.eval(environment)?),
@@ -37,10 +49,10 @@ impl Statement {
 }
 
 impl BlockStatement {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
+    fn eval(self, environment: SharedEnv) -> Result<Object> {
         let mut result = Object::Nil;
         for statement in self.0 {
-            result = statement.eval(environment)?;
+            result = statement.eval(environment.clone())?;
             if let Object::Return(_) = result {
                 break;
             }
@@ -50,7 +62,7 @@ impl BlockStatement {
 }
 
 impl Expression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
+    fn eval(self, environment: SharedEnv) -> Result<Object> {
         Ok(match self {
             Expression::Literal(literal) => match literal {
                 Literal::Int(integer) => Object::Int(integer),
@@ -61,7 +73,7 @@ impl Expression {
                 Literal::Array(array) => Object::Array(Array::new(
                     array
                         .into_iter()
-                        .map(|x| x.eval(environment))
+                        .map(|x| x.eval(environment.clone()))
                         .collect::<Result<_>>()?,
                 )),
             },
@@ -78,8 +90,8 @@ impl Expression {
 //TODO: use a trait design
 
 impl IndexExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        let container = self.container.eval(environment)?;
+    fn eval(self, environment: SharedEnv) -> Result<Object> {
+        let container = self.container.eval(environment.clone())?;
         let index = self.index.eval(environment)?;
         Ok(match (container, index) {
             (Object::Array(array), Object::Int(index)) => {
@@ -88,9 +100,7 @@ impl IndexExpression {
                 } else {
                     Some(index as usize)
                 };
-                value.map_or(NIL.clone(), |x| {
-                    array.get(x).cloned().unwrap_or(NIL.clone())
-                })
+                value.map_or(NIL, |x| array.get(x).cloned().unwrap_or(NIL))
             }
             (container, index) => bail!("index operator not supported: {}[{}]", container, index),
         })
@@ -98,7 +108,7 @@ impl IndexExpression {
 }
 
 impl UnaryExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
+    fn eval(self, environment: SharedEnv) -> Result<Object> {
         let operand = self.value.eval(environment)?;
         Ok(match self.operator {
             crate::ast::UnaryOperator::Not => operand.not()?,
@@ -108,8 +118,8 @@ impl UnaryExpression {
 }
 
 impl BinaryExpression {
-    fn eval(self, env: &mut Environment) -> Result<Object> {
-        let (lhs, rhs) = (self.lhs.eval(env)?, self.rhs.eval(env)?);
+    fn eval(self, env: SharedEnv) -> Result<Object> {
+        let (lhs, rhs) = (self.lhs.eval(env.clone())?, self.rhs.eval(env)?);
         Ok(match self.operator {
             BinaryOperator::Eq => lhs.eq(rhs).into(),
             BinaryOperator::NotEq => lhs.not_eq(rhs).into(),
@@ -126,17 +136,17 @@ impl BinaryExpression {
 }
 
 impl Identifier {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        let result = environment
+    fn eval(self, environment: SharedEnv) -> Result<Object> {
+        Ok(environment
+            .borrow()
             .get(&self)
-            .ok_or(anyhow!("Identifier {} not found", self.inner()))?;
-        Ok(result)
+            .ok_or(anyhow!("Identifier {} not found", self.inner()))?)
     }
 }
 
 impl CallExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        match self.function.eval(environment)? {
+    fn eval(self, environment: SharedEnv) -> Result<Object> {
+        match self.function.eval(environment.clone())? {
             Object::Function(function) => function.eval(environment, self.arguments),
             Object::BuiltInFn(builtin) => builtin.eval(environment, self.arguments),
             value => Err(anyhow!("expected a function, found: {value}")),
@@ -145,7 +155,7 @@ impl CallExpression {
 }
 
 impl BuiltInFn {
-    pub fn eval(self, environment: &mut Environment, arguments: Vec<Expression>) -> Result<Object> {
+    pub fn eval(self, environment: SharedEnv, arguments: Vec<Expression>) -> Result<Object> {
         match self {
             BuiltInFn::Len => {
                 //could use https://docs.rs/itertools/0.11.0/itertools/trait.Itertools.html#method.tuples
@@ -160,14 +170,14 @@ impl BuiltInFn {
             }
             BuiltInFn::First => match TryInto::<[Expression; 1]>::try_into(arguments) {
                 Ok([val]) => Ok(match val.eval(environment)? {
-                    Object::Array(val) => val.first().cloned().unwrap_or(NIL.clone()),
+                    Object::Array(val) => val.first().cloned().unwrap_or(NIL),
                     val => bail!("expected array, found: {}", val),
                 }),
                 Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
             },
             BuiltInFn::Last => match TryInto::<[Expression; 1]>::try_into(arguments) {
                 Ok([val]) => Ok(match val.eval(environment)? {
-                    Object::Array(val) => val.last().cloned().unwrap_or(NIL.clone()),
+                    Object::Array(val) => val.last().cloned().unwrap_or(NIL),
                     val => bail!("expected array, found: {}", val),
                 }),
                 Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
@@ -181,7 +191,10 @@ impl BuiltInFn {
             },
             BuiltInFn::Push => match TryInto::<[Expression; 2]>::try_into(arguments) {
                 Ok([container, element]) => Ok(
-                    match (container.eval(environment)?, element.eval(environment)?) {
+                    match (
+                        container.eval(environment.clone())?,
+                        element.eval(environment)?,
+                    ) {
                         (Object::Array(array), element) => {
                             Array::new(array.0.into_iter().chain(iter::once(element)).collect())
                                 .into()
@@ -196,44 +209,43 @@ impl BuiltInFn {
 }
 
 impl Function {
-    fn eval(self, environment: &mut Environment, arguments: Vec<Expression>) -> Result<Object> {
+    fn eval(self, environment: SharedEnv, arguments: Vec<Expression>) -> Result<Object> {
         let args = arguments
             .into_iter()
-            .map(|x| x.eval(environment))
+            .map(|x| x.eval(environment.clone()))
             .collect::<Result<Vec<_>, _>>()?;
-        let mut extended_env = Environment::new_enclosed(
-            self.env,
+        let extended_env = Environment::new_enclosed(
+            self.env.clone(),
             self.parameters
                 .into_iter()
                 .map(|x| x.inner())
                 .zip(args)
                 .collect(),
         );
-        self.body.eval(&mut extended_env)
+        self.body.eval(extended_env)
     }
 }
 
 impl FunctionExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        Ok(Object::Function(Function::new(
+    fn eval(self, environment: SharedEnv) -> Result<Object> {
+        Ok(Object::Function(Box::new(Function::new(
             self.parameters,
             self.body,
-            //CLONE
-            environment.clone(),
-        )))
+            environment,
+        ))))
     }
 }
 
 impl IfExpression {
-    fn eval(self, environment: &mut Environment) -> Result<Object> {
-        let condition = self.condition.eval(environment)?.into_bool()?;
+    fn eval(self, environment: SharedEnv) -> Result<Object> {
+        let condition = self.condition.eval(environment.clone())?.into_bool()?;
 
         Ok(if condition {
             self.consequence.eval(environment)?
         } else if let Some(alternative) = self.alternative {
             alternative.eval(environment)?
         } else {
-            NIL.clone()
+            NIL
         })
     }
 }
@@ -247,9 +259,9 @@ mod tests {
     fn parse_program(input: &str) -> Object {
         let lexer = Lexer::new(input);
         let parser = Parser::new(lexer);
-        let mut environment = Environment::new();
+        let mut program = Program::new();
 
-        environment.eval_program(parser).unwrap()
+        program.eval(parser).unwrap()
     }
 
     fn parse_test_input(input: &[&str]) -> Vec<Object> {
@@ -273,13 +285,13 @@ mod tests {
     fn eval_recursive_fn() {
         let input = "
             let fib = fn(x) {
-                if (x <= 0){
+                if (x <= 2){
                     1
-                }else{
+                } else {
                     fib(x - 1) + fib(x - 2)
                 }
-            }
-            fib(3);
+            };
+            fib(10);
         ";
         let result = parse_test_input([input].as_slice());
         assert_yaml_snapshot!(result);
@@ -425,8 +437,8 @@ mod tests {
             .map(|x| {
                 let lexer = Lexer::new(x);
                 let parser = Parser::new(lexer);
-                let mut environment = Environment::new();
-                match environment.eval_program(parser) {
+                let mut program = Program::new();
+                match program.eval(parser) {
                     Ok(ok) => ok.to_string(),
                     Err(err) => err.to_string(),
                 }
@@ -522,9 +534,9 @@ mod tests {
             .flat_map(|x| {
                 let lexer = Lexer::new(x);
                 let parser = Parser::new(lexer);
-                let mut environment = Environment::new();
-                let val = environment.eval_program(parser);
-                match val {
+                let environment = Environment::new();
+                let mut program = Program::new();
+                match program.eval(parser) {
                     Ok(val) => None,
                     Err(err) => Some(err.to_string()),
                 }

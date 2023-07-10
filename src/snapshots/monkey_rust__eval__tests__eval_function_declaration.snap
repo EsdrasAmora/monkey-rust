@@ -14,7 +14,4 @@ expression: result
             rhs:
               Literal:
                 Int: 2
-    env:
-      curr: {}
-      outer: ~
 

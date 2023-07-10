@@ -1,0 +1,10 @@
+---
+source: src/eval.rs
+expression: result
+---
+- Array:
+    - Int: 2
+    - Int: 4
+    - Int: 6
+    - Int: 8
+
