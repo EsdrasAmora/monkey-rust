@@ -6,7 +6,7 @@ use crate::ast::{
     BinaryExpression, BinaryOperator, BlockStatement, CallExpression, Expression,
     FunctionExpression, IfExpression, IndexExpression, Literal, Statement, UnaryExpression,
 };
-use crate::object::{Array, BuiltInFn, Environment, Function, Object, SharedEnv, NIL};
+use crate::object::{Array, BuiltInFn, Environment, Function, HashTable, Object, SharedEnv, NIL};
 use crate::parser::Parser;
 use crate::token::Identifier;
 use anyhow::{anyhow, bail, Result};
@@ -35,24 +35,24 @@ impl Program {
 }
 
 impl Statement {
-    fn eval(self: Statement, environment: SharedEnv) -> Result<Object> {
+    fn eval(self: Statement, env: SharedEnv) -> Result<Object> {
         match self {
             Statement::Let { identifier, value } => {
-                let val = value.eval(environment.clone())?;
-                environment.borrow_mut().try_insert(&identifier, val)?;
+                let val = value.eval(env.clone())?;
+                env.borrow_mut().try_insert(&identifier, val)?;
                 Ok(NIL)
             }
-            Statement::Return(exp) => Ok(Object::Return(Box::new(exp.eval(environment)?))),
-            Statement::Expression(exp) => Ok(exp.eval(environment)?),
+            Statement::Return(exp) => Ok(Object::Return(Box::new(exp.eval(env)?))),
+            Statement::Expression(exp) => Ok(exp.eval(env)?),
         }
     }
 }
 
 impl BlockStatement {
-    fn eval(self, environment: SharedEnv) -> Result<Object> {
+    fn eval(self, env: SharedEnv) -> Result<Object> {
         let mut result = Object::Nil;
         for statement in self.0 {
-            result = statement.eval(environment.clone())?;
+            result = statement.eval(env.clone())?;
             if let Object::Return(_) = result {
                 break;
             }
@@ -62,7 +62,7 @@ impl BlockStatement {
 }
 
 impl Expression {
-    fn eval(self, environment: SharedEnv) -> Result<Object> {
+    fn eval(self, env: SharedEnv) -> Result<Object> {
         Ok(match self {
             Expression::Literal(literal) => match literal {
                 Literal::Int(integer) => Object::Int(integer),
@@ -70,30 +70,34 @@ impl Expression {
                 Literal::False => Object::Bool(false),
                 Literal::String(string) => Object::String(string),
                 Literal::Nil => Object::Nil,
-                Literal::Hash(hash) => todo!(),
+                Literal::Hash(hash) => Object::HashTable(HashTable::new(
+                    hash.into_iter()
+                        .map(|(key, value)| Ok((key.eval(env.clone())?, value.eval(env.clone())?)))
+                        .collect::<Result<_>>()?,
+                )),
                 Literal::Array(array) => Object::Array(Array::new(
                     array
                         .into_iter()
-                        .map(|x| x.eval(environment.clone()))
+                        .map(|x| x.eval(env.clone()))
                         .collect::<Result<_>>()?,
                 )),
             },
-            Expression::Identifier(ident) => ident.eval(environment)?,
-            Expression::UnaryExpression(exp) => exp.eval(environment)?,
-            Expression::BinaryExp(bin_exp) => bin_exp.eval(environment)?,
-            Expression::If(if_exp) => if_exp.eval(environment)?,
-            Expression::Function(fn_exp) => fn_exp.eval(environment)?,
-            Expression::Call(call_exp) => call_exp.eval(environment)?,
-            Expression::IndexExpression(index_exp) => index_exp.eval(environment)?,
+            Expression::Identifier(ident) => ident.eval(env)?,
+            Expression::UnaryExpression(exp) => exp.eval(env)?,
+            Expression::BinaryExp(bin_exp) => bin_exp.eval(env)?,
+            Expression::If(if_exp) => if_exp.eval(env)?,
+            Expression::Function(fn_exp) => fn_exp.eval(env)?,
+            Expression::Call(call_exp) => call_exp.eval(env)?,
+            Expression::IndexExpression(index_exp) => index_exp.eval(env)?,
         })
     }
 }
 //TODO: use a trait design
 
 impl IndexExpression {
-    fn eval(self, environment: SharedEnv) -> Result<Object> {
-        let container = self.container.eval(environment.clone())?;
-        let index = self.index.eval(environment)?;
+    fn eval(self, env: SharedEnv) -> Result<Object> {
+        let container = self.container.eval(env.clone())?;
+        let index = self.index.eval(env)?;
         Ok(match (container, index) {
             (Object::Array(array), Object::Int(index)) => {
                 let value = if index.is_negative() {
@@ -103,14 +107,15 @@ impl IndexExpression {
                 };
                 value.map_or(NIL, |x| array.get(x).cloned().unwrap_or(NIL))
             }
+            (Object::HashTable(table), anything) => table.0.get(&anything).cloned().unwrap_or(NIL),
             (container, index) => bail!("index operator not supported: {}[{}]", container, index),
         })
     }
 }
 
 impl UnaryExpression {
-    fn eval(self, environment: SharedEnv) -> Result<Object> {
-        let operand = self.value.eval(environment)?;
+    fn eval(self, env: SharedEnv) -> Result<Object> {
+        let operand = self.value.eval(env)?;
         Ok(match self.operator {
             crate::ast::UnaryOperator::Not => operand.not()?,
             crate::ast::UnaryOperator::Minus => operand.minus()?,
@@ -137,8 +142,8 @@ impl BinaryExpression {
 }
 
 impl Identifier {
-    fn eval(self, environment: SharedEnv) -> Result<Object> {
-        Ok(environment
+    fn eval(self, env: SharedEnv) -> Result<Object> {
+        Ok(env
             .borrow()
             .get(&self)
             .ok_or(anyhow!("Identifier {} not found", self.inner()))?)
@@ -146,63 +151,58 @@ impl Identifier {
 }
 
 impl CallExpression {
-    fn eval(self, environment: SharedEnv) -> Result<Object> {
-        match self.function.eval(environment.clone())? {
-            Object::Function(function) => function.eval(environment, self.arguments),
-            Object::BuiltInFn(builtin) => builtin.eval(environment, self.arguments),
+    fn eval(self, env: SharedEnv) -> Result<Object> {
+        match self.function.eval(env.clone())? {
+            Object::Function(function) => function.eval(env, self.arguments),
+            Object::BuiltInFn(builtin) => builtin.eval(env, self.arguments),
             value => Err(anyhow!("expected a function, found: {value}")),
         }
     }
 }
 
 impl BuiltInFn {
-    pub fn eval(self, environment: SharedEnv, arguments: Vec<Expression>) -> Result<Object> {
+    pub fn eval(self, env: SharedEnv, arguments: Vec<Expression>) -> Result<Object> {
         match self {
-            BuiltInFn::Len => {
-                //could use https://docs.rs/itertools/0.11.0/itertools/trait.Itertools.html#method.tuples
-                match TryInto::<[Expression; 1]>::try_into(arguments) {
-                    Ok([val]) => Ok(match val.eval(environment)? {
-                        Object::String(val) => Object::Int(val.len() as i64),
-                        Object::Array(val) => Object::Int(val.len() as i64),
-                        val => bail!("expected array or string, found: {}", val),
-                    }),
-                    Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
-                }
-            }
+            //maybe use https://docs.rs/itertools/0.11.0/itertools/trait.Itertools.html#method.tuples
+            BuiltInFn::Len => match TryInto::<[Expression; 1]>::try_into(arguments) {
+                Ok([val]) => Ok(match val.eval(env)? {
+                    Object::String(val) => Object::Int(val.len() as i64),
+                    Object::Array(val) => Object::Int(val.len() as i64),
+                    val => bail!("expected array or string, found: {}", val),
+                }),
+                Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
+            },
             BuiltInFn::First => match TryInto::<[Expression; 1]>::try_into(arguments) {
-                Ok([val]) => Ok(match val.eval(environment)? {
+                Ok([val]) => Ok(match val.eval(env)? {
                     Object::Array(val) => val.first().cloned().unwrap_or(NIL),
                     val => bail!("expected array, found: {}", val),
                 }),
                 Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
             },
             BuiltInFn::Last => match TryInto::<[Expression; 1]>::try_into(arguments) {
-                Ok([val]) => Ok(match val.eval(environment)? {
+                Ok([val]) => Ok(match val.eval(env)? {
                     Object::Array(val) => val.last().cloned().unwrap_or(NIL),
                     val => bail!("expected array, found: {}", val),
                 }),
                 Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
             },
             BuiltInFn::Rest => match TryInto::<[Expression; 1]>::try_into(arguments) {
-                Ok([val]) => Ok(match val.eval(environment)? {
+                Ok([val]) => Ok(match val.eval(env)? {
                     Object::Array(val) => Array::new(val.0.into_iter().skip(1).collect()).into(),
                     val => bail!("expected array, found: {}", val),
                 }),
                 Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
             },
             BuiltInFn::Push => match TryInto::<[Expression; 2]>::try_into(arguments) {
-                Ok([container, element]) => Ok(
-                    match (
-                        container.eval(environment.clone())?,
-                        element.eval(environment)?,
-                    ) {
+                Ok([container, element]) => {
+                    Ok(match (container.eval(env.clone())?, element.eval(env)?) {
                         (Object::Array(array), element) => {
                             Array::new(array.0.into_iter().chain(iter::once(element)).collect())
                                 .into()
                         }
                         val => bail!("expected array and element, found: {} and {}", val.0, val.1),
-                    },
-                ),
+                    })
+                }
                 Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
             },
         }
@@ -210,10 +210,10 @@ impl BuiltInFn {
 }
 
 impl Function {
-    fn eval(self, environment: SharedEnv, arguments: Vec<Expression>) -> Result<Object> {
+    fn eval(self, env: SharedEnv, arguments: Vec<Expression>) -> Result<Object> {
         let args = arguments
             .into_iter()
-            .map(|x| x.eval(environment.clone()))
+            .map(|x| x.eval(env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
         let extended_env = Environment::new_enclosed(
             self.env.clone(),
@@ -228,23 +228,23 @@ impl Function {
 }
 
 impl FunctionExpression {
-    fn eval(self, environment: SharedEnv) -> Result<Object> {
+    fn eval(self, env: SharedEnv) -> Result<Object> {
         Ok(Object::Function(Box::new(Function::new(
             self.parameters,
             self.body,
-            environment,
+            env,
         ))))
     }
 }
 
 impl IfExpression {
-    fn eval(self, environment: SharedEnv) -> Result<Object> {
-        let condition = self.condition.eval(environment.clone())?.into_bool()?;
+    fn eval(self, env: SharedEnv) -> Result<Object> {
+        let condition = self.condition.eval(env.clone())?.into_bool()?;
 
         Ok(if condition {
-            self.consequence.eval(environment)?
+            self.consequence.eval(env)?
         } else if let Some(alternative) = self.alternative {
-            alternative.eval(environment)?
+            alternative.eval(env)?
         } else {
             NIL
         })
@@ -382,6 +382,53 @@ mod tests {
 
         let result = parse_test_input(input.as_slice());
         assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_hash_index() {
+        let input = [
+            r#"{"foo": 5}["foo"]"#,
+            r#"{"foo": 4}["bar"]"#,
+            r#"let key = "foo"; {"foo": 3}[key]"#,
+            r#"{}["foo"]"#,
+            r#"{5: 2}[5]"#,
+            r#"{true: 5}[true]"#,
+            r#"{false: 5}[false]"#,
+            r#"{"true": 5}[true]"#,
+            r#"{true: 5}["true"]"#,
+            r#"{3: 1}["3"]"#,
+            r#"{"3": 1}[3]"#,
+        ];
+
+        let result = parse_test_input(input.as_slice());
+        assert_yaml_snapshot!(result);
+    }
+
+    #[test]
+    fn eval_hash_literal() {
+        let input = r#"
+            let two = "potato";
+            {
+                "one": 1 + 1,
+                two: 13,
+                "foo" + "bar": 10,
+                4: {1:1},
+                true: [1,2],
+                "false": 6
+            };"#;
+
+        let result = parse_program(input);
+        if let Object::HashTable(hash) = result {
+            let mut result = hash
+                .0
+                .into_iter()
+                .map(|(key, value)| (key.to_string(), value))
+                .collect::<Vec<_>>();
+            result.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+            assert_yaml_snapshot!(result);
+        } else {
+            panic!("expected hash table");
+        }
     }
 
     #[test]
@@ -535,7 +582,7 @@ mod tests {
             .flat_map(|x| {
                 let lexer = Lexer::new(x);
                 let parser = Parser::new(lexer);
-                let environment = Environment::new();
+                let env = Environment::new();
                 let mut program = Program::new();
                 match program.eval(parser) {
                     Ok(val) => None,

@@ -1,0 +1,21 @@
+---
+source: src/eval.rs
+expression: result
+---
+- - "4"
+  - HashTable:
+      ? Int: 1
+      : Int: 1
+- - "false"
+  - Int: 6
+- - foobar
+  - Int: 10
+- - one
+  - Int: 2
+- - potato
+  - Int: 13
+- - "true"
+  - Array:
+      - Int: 1
+      - Int: 2
+

@@ -46,7 +46,7 @@ pub enum Token {
     Return,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Identifier(SmolStr);
 
 impl Identifier {

@@ -1,0 +1,16 @@
+---
+source: src/eval.rs
+expression: result
+---
+- Int: 5
+- Nil
+- Int: 3
+- Nil
+- Int: 2
+- Int: 5
+- Int: 5
+- Nil
+- Nil
+- Nil
+- Nil
+

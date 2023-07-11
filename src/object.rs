@@ -15,7 +15,7 @@ use crate::{
     token::Identifier,
 };
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, PartialEq, Hash, Eq)]
 pub enum Object {
     Nil,
     Int(i64),
@@ -28,7 +28,7 @@ pub enum Object {
     Return(Box<Object>),
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum BuiltInFn {
     Len,
     First,
@@ -37,11 +37,23 @@ pub enum BuiltInFn {
     Push,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq, Hash)]
 pub struct Array(pub Vec<Object>);
 
-#[derive(Debug, Serialize, Clone)]
-pub struct HashTable(pub HashMap<SmolStr, Object>);
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
+pub struct HashTable(pub HashMap<Object, Object>);
+
+impl HashTable {
+    pub fn new(storage: HashMap<Object, Object>) -> Self {
+        Self(storage)
+    }
+}
+
+impl std::hash::Hash for HashTable {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        todo!("Implement Hash for HashTable")
+    }
+}
 
 impl From<Array> for Object {
     fn from(vec: Array) -> Self {
@@ -178,6 +190,24 @@ pub struct Function {
     pub body: BlockStatement,
     #[serde(skip_serializing)]
     pub env: SharedEnv,
+}
+
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.parameters == other.parameters
+            && self.body.0.as_ptr() == other.body.0.as_ptr()
+            && self.env.as_ptr() == other.env.as_ptr()
+    }
+}
+
+impl Eq for Function {}
+
+impl std::hash::Hash for Function {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.parameters.hash(state);
+        self.body.0.as_ptr().hash(state);
+        self.env.as_ptr().hash(state);
+    }
 }
 
 impl fmt::Debug for Function {
