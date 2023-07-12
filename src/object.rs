@@ -50,6 +50,7 @@ impl Eq for Object {}
 impl PartialEq for Object {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Self::Nil, Self::Nil) => true,
             (Self::Int(lhs), Self::Int(rhs)) => lhs == rhs,
             (Self::Bool(lhs), Self::Bool(rhs)) => lhs == rhs,
             (Self::String(lhs), Self::String(rhs)) => lhs == rhs,
@@ -70,6 +71,7 @@ pub enum BuiltInFn {
     Last,
     Rest,
     Push,
+    Puts,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -117,13 +119,14 @@ impl DerefMut for Array {
 }
 
 impl BuiltInFn {
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
             BuiltInFn::Len => "len",
             BuiltInFn::First => "first",
             BuiltInFn::Last => "last",
             BuiltInFn::Rest => "rest",
             BuiltInFn::Push => "push",
+            BuiltInFn::Puts => "puts",
         }
     }
 }
@@ -194,11 +197,13 @@ impl Environment {
             .cloned()
             .or_else(|| self.outer.as_ref().and_then(|x| x.borrow().get(name)))
             .or_else(|| match name.inner().as_str() {
+                //TODO: find some way to detect when there is a case missing here
                 "len" => Some(Object::BuiltInFn(BuiltInFn::Len)),
                 "first" => Some(Object::BuiltInFn(BuiltInFn::First)),
                 "last" => Some(Object::BuiltInFn(BuiltInFn::Last)),
                 "rest" => Some(Object::BuiltInFn(BuiltInFn::Rest)),
                 "push" => Some(Object::BuiltInFn(BuiltInFn::Push)),
+                "puts" => Some(Object::BuiltInFn(BuiltInFn::Puts)),
                 _ => None,
             })
     }

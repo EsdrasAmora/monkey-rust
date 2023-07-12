@@ -202,8 +202,14 @@ impl BuiltInFn {
                         val => bail!("expected array and element, found: {} and {}", val.0, val.1),
                     })
                 }
-                Err(vec) => bail!("expected 1 argument, found: {}", vec.len()),
+                Err(vec) => bail!("expected 2 argument, found: {}", vec.len()),
             },
+            BuiltInFn::Puts => {
+                for exp in arguments {
+                    println!("{}", exp.eval(env.clone())?)
+                }
+                Ok(NIL)
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 use monkey_rust::eval::Program;
 use monkey_rust::lexer::Lexer;
+use monkey_rust::object::NIL;
 use monkey_rust::parser::Parser;
 use rustyline::error::ReadlineError;
 use rustyline::{DefaultEditor, Result};
@@ -22,8 +23,14 @@ fn main() -> Result<()> {
                 let lexer = Lexer::new(&line);
                 let parser = Parser::new(lexer);
                 let result = program.eval(parser);
-                println!("{:?}", result)
-                // serde_json::to_string_pretty(&obj).unwrap()
+                match result {
+                    Ok(ok) => {
+                        if ok != NIL {
+                            println!("{:?}", ok)
+                        }
+                    }
+                    Err(err) => println!("error: {:?}", err),
+                }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
