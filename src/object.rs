@@ -3,6 +3,7 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     fmt::{self, Display},
     ops::{Deref, DerefMut},
+    ptr,
     rc::Rc,
 };
 
@@ -15,17 +16,51 @@ use crate::{
     token::Identifier,
 };
 
-#[derive(Debug, Serialize, Clone, PartialEq, Hash, Eq)]
+#[derive(Debug, Serialize, Clone)]
 pub enum Object {
     Nil,
     Int(i64),
     Bool(bool),
     BuiltInFn(BuiltInFn),
     Array(Array),
-    HashTable(HashTable),
+    HashTable(Box<HashTable>),
     String(SmolStr),
     Function(Box<Function>),
     Return(Box<Object>),
+}
+
+impl std::hash::Hash for Object {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Object::Nil => state.write_u8(69),
+            Object::Int(int) => int.hash(state),
+            Object::Bool(bool) => bool.hash(state),
+            Object::BuiltInFn(builtin) => builtin.hash(state),
+            Object::Array(array) => array.as_ptr().hash(state),
+            Object::HashTable(hashtable) => ptr::addr_of!(*hashtable).hash(state),
+            Object::String(string) => string.hash(state),
+            Object::Function(function) => ptr::addr_of!(*function).hash(state),
+            Object::Return(_) => state.write_u16(1337),
+        }
+    }
+}
+
+impl Eq for Object {}
+
+impl PartialEq for Object {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Int(lhs), Self::Int(rhs)) => lhs == rhs,
+            (Self::Bool(lhs), Self::Bool(rhs)) => lhs == rhs,
+            (Self::String(lhs), Self::String(rhs)) => lhs == rhs,
+            (Self::BuiltInFn(lhs), Self::BuiltInFn(rhs)) => lhs == rhs,
+            (Self::Array(lhs), Self::Array(rhs)) => ptr::eq(lhs, rhs),
+            (Self::HashTable(lhs), Self::HashTable(rhs)) => ptr::eq(lhs, rhs),
+            (Self::Function(lhs), Self::Function(rhs)) => ptr::eq(lhs, rhs),
+            (Self::Return(lhs), Self::Return(rhs)) => false,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, Hash)]
@@ -37,21 +72,17 @@ pub enum BuiltInFn {
     Push,
 }
 
-#[derive(Debug, Serialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Array(pub Vec<Object>);
 
-#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
+pub struct HashTableKey(Object);
+
+#[derive(Debug, Serialize, Clone)]
 pub struct HashTable(pub HashMap<Object, Object>);
 
 impl HashTable {
     pub fn new(storage: HashMap<Object, Object>) -> Self {
         Self(storage)
-    }
-}
-
-impl std::hash::Hash for HashTable {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        todo!("Implement Hash for HashTable")
     }
 }
 
@@ -160,7 +191,6 @@ impl Environment {
     pub fn get(&self, name: &Identifier) -> Option<Object> {
         self.curr
             .get(&name.inner())
-            //Clone
             .cloned()
             .or_else(|| self.outer.as_ref().and_then(|x| x.borrow().get(name)))
             .or_else(|| match name.inner().as_str() {
@@ -190,24 +220,6 @@ pub struct Function {
     pub body: BlockStatement,
     #[serde(skip_serializing)]
     pub env: SharedEnv,
-}
-
-impl PartialEq for Function {
-    fn eq(&self, other: &Self) -> bool {
-        self.parameters == other.parameters
-            && self.body.0.as_ptr() == other.body.0.as_ptr()
-            && self.env.as_ptr() == other.env.as_ptr()
-    }
-}
-
-impl Eq for Function {}
-
-impl std::hash::Hash for Function {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.parameters.hash(state);
-        self.body.0.as_ptr().hash(state);
-        self.env.as_ptr().hash(state);
-    }
 }
 
 impl fmt::Debug for Function {

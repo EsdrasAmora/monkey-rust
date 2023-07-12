@@ -70,11 +70,11 @@ impl Expression {
                 Literal::False => Object::Bool(false),
                 Literal::String(string) => Object::String(string),
                 Literal::Nil => Object::Nil,
-                Literal::Hash(hash) => Object::HashTable(HashTable::new(
+                Literal::Hash(hash) => Object::HashTable(Box::new(HashTable::new(
                     hash.into_iter()
                         .map(|(key, value)| Ok((key.eval(env.clone())?, value.eval(env.clone())?)))
                         .collect::<Result<_>>()?,
-                )),
+                ))),
                 Literal::Array(array) => Object::Array(Array::new(
                     array
                         .into_iter()
@@ -92,7 +92,6 @@ impl Expression {
         })
     }
 }
-//TODO: use a trait design
 
 impl IndexExpression {
     fn eval(self, env: SharedEnv) -> Result<Object> {
