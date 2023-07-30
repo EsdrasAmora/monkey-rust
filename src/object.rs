@@ -158,7 +158,7 @@ pub enum EvalError {
     IdentifierAlreadyDefined(Identifier),
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Default)]
 pub struct Environment {
     //maybe use a single hashmap with the function name as key
     curr: HashMap<SmolStr, Object>,
@@ -363,12 +363,10 @@ impl Object {
     pub fn minus(self) -> Result<Object> {
         match self {
             Object::Int(int) => Ok(Object::Int(-int)),
-            operand => {
-                return Err(EvalError::UnaryOpError {
-                    operator: UnaryOperator::Minus,
-                    operand: operand.to_string(),
-                })
-            }
+            operand => Err(EvalError::UnaryOpError {
+                operator: UnaryOperator::Minus,
+                operand: operand.to_string(),
+            }),
         }
     }
 

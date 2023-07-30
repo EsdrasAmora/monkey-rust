@@ -11,6 +11,7 @@ use crate::parser::Parser;
 use crate::token::Identifier;
 use anyhow::{anyhow, bail, Result};
 
+#[derive(Default)]
 pub struct Program {
     pub env: SharedEnv,
 }
@@ -100,7 +101,7 @@ impl IndexExpression {
         Ok(match (container, index) {
             (Object::Array(array), Object::Int(index)) => {
                 let value = if index.is_negative() {
-                    array.len().checked_sub(index.abs() as usize)
+                    array.len().checked_sub(index.unsigned_abs() as usize)
                 } else {
                     Some(index as usize)
                 };
@@ -142,10 +143,9 @@ impl BinaryExpression {
 
 impl Identifier {
     fn eval(self, env: SharedEnv) -> Result<Object> {
-        Ok(env
-            .borrow()
+        env.borrow()
             .get(&self)
-            .ok_or(anyhow!("Identifier {} not found", self.inner()))?)
+            .ok_or(anyhow!("Identifier {} not found", self.inner()))
     }
 }
 

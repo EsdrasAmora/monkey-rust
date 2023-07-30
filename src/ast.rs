@@ -134,7 +134,7 @@ impl Token {
             Token::Lte => Some(BinaryOperator::Lte),
             Token::Gt => Some(BinaryOperator::Gt),
             Token::Gte => Some(BinaryOperator::Gte),
-            _ => return None,
+            _ => None,
         }
     }
 }
